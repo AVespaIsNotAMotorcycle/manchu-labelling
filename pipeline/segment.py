@@ -35,6 +35,10 @@ MIN_MAIN_HEIGHT = 0.012
 CHINESE_CHARACTER_GAP = 0.006
 ATTACH_DISTANCE = 0.02
 
+# A stroke this narrow and this tall is the page edge or fold rather than writing.
+EDGE_MAX_WIDTH = 0.012
+EDGE_MIN_HEIGHT = 0.05
+
 # A column is Manchu if at least this share of its ink is in tall connected strokes.
 MANCHU_TALL_INK_SHARE = 0.5
 # Two strokes are one word if they overlap vertically by this share of the shorter one.
@@ -130,13 +134,13 @@ def find_components(ink: np.ndarray, paper_height: int) -> list[Component]:
         if area < min_area:
             continue
         ys, xs = np.nonzero(window)
-        components.append(
-            Component(
-                Box(x + int(xs.min()), y + int(ys.min()), x + int(xs.max()) + 1, y + int(ys.max()) + 1),
-                x + float(np.median(xs)),
-                area,
-            )
+        box = Box(x + int(xs.min()), y + int(ys.min()), x + int(xs.max()) + 1, y + int(ys.max()) + 1)
+        is_edge = (
+            box.x1 - box.x0 < paper_height * EDGE_MAX_WIDTH
+            and box.height > paper_height * EDGE_MIN_HEIGHT
         )
+        if not is_edge:
+            components.append(Component(box, x + float(np.median(xs)), area))
     return components
 
 
