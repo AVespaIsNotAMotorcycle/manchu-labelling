@@ -173,7 +173,7 @@ function LabelForm({ image, onDone }: { image: LabelImage; onDone: () => void })
           </>
         )}
 
-        <details>
+        <details open>
           <summary>
             Style: {production.replace("_", " ")}, {script}
           </summary>

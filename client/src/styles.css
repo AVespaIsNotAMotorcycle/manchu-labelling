@@ -165,8 +165,8 @@ figcaption {
 .manchu.preview {
   display: block;
   min-width: 4rem;
-  min-height: 14rem;
-  font-size: 3rem;
+  min-height: 18rem;
+  font-size: 4.5rem;
 }
 
 .fields {
@@ -266,7 +266,7 @@ legend {
 
 .manchu.letter {
   display: inline-block;
-  font-size: 1.6rem;
+  font-size: 2.5rem;
 }
 
 @media (max-width: 60rem) {
