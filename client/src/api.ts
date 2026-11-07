@@ -26,6 +26,32 @@ export interface Label {
   confidence: { category: string; transcription: string; style: string };
 }
 
+export interface QuizProgress {
+  answered: number;
+  correct: number;
+  real: number;
+  windowSize: number;
+  minReal: number;
+  qualified: boolean;
+}
+
+export interface QuizItem {
+  id: string;
+  imageUrl: string;
+}
+
+export interface QuizFeedback {
+  correct: boolean;
+  answer: { category: string; manchu?: string; abkai?: string; mollendorff?: string };
+  source: string;
+  progress: QuizProgress;
+}
+
+export interface TrainingStatus {
+  classes: { scriptClass: string; progress: QuizProgress }[];
+  qualified: string[];
+}
+
 async function request<T>(path: string, options?: { method: string; body?: unknown }): Promise<T> {
   const response = await fetch(path, {
     method: options?.method ?? "GET",
@@ -44,6 +70,14 @@ export const logIn = (email: string, password: string) =>
   request<Account>("/api/auth/login", { method: "POST", body: { email, password } });
 export const logOut = () => request<void>("/api/auth/logout", { method: "POST" });
 export const acceptLicense = () => request<Account>("/api/auth/accept-license", { method: "POST" });
+export const getTrainingStatus = () => request<TrainingStatus>("/api/training/status");
+export const getQuizItem = (scriptClass: string) =>
+  request<{ item: QuizItem | null; progress: QuizProgress }>(`/api/training/${scriptClass}/next`);
+export const answerQuiz = (
+  scriptClass: string,
+  answer: { category: string; transcription?: string },
+) =>
+  request<QuizFeedback>(`/api/training/${scriptClass}/answer`, { method: "POST", body: answer });
 export const getNextImage = () => request<{ image: LabelImage | null }>("/api/labelling/next");
 export const getContext = (id: string) => request<PageContext>(`/api/labelling/${id}/context`);
 export const submitLabel = (id: string, label: Label) =>

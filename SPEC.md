@@ -151,17 +151,31 @@ Users complete this section before they can do real work:
 - **Disclosure:** users are told that hidden checks exist and that they can review and dispute past
   test images.
 
-**[Proposed]** quiz details:
+**[Proposed]** quiz details, as built:
 
-- Qualification is per script class, since skill with one does not carry over to another.
-- The quiz covers category as well as transcription, so it includes non-Manchu images.
+- Qualification is per script class, using the same `script` values as volumes. A user only receives
+  images from volumes in classes they have qualified for. Passing is permanent, and hidden checks decide
+  whether later labels count.
+- The quiz covers category as well as transcription, so about 10% of images are not Manchu.
 - Transcriptions must match exactly. The intended word field is not scored.
-- Quiz images are never used as hidden checks.
-- Print images can come from Sun et al. (2026). Manuscript qualification needs real manuscript images
-  from the same kinds of sources as the work itself.
-- Synthetic images can be generated without limit, using the `dots-and-circles` generator (font
-  licenses need checking). They are easier than real scans, so at least half of the 20-image window
-  must be real.
+- At least 10 of the 20 images must be real. A real image is only forced when the window could not
+  otherwise reach 10, so synthetic images appear from the start.
+- Images do not repeat until a user has answered them all, and reloading cannot skip an image.
+- Quiz images are a separate collection from hidden checks and are never used as checks.
+
+### The `regular` bank
+
+| Images | Count | Source |
+| --- | --- | --- |
+| Printed Manchu words | 2,428 | Sun et al. (2026), one photo per word, CC BY 4.0 |
+| Synthetic Manchu words | 600 | Rendered from a lexicon in the 12 local fonts |
+| Chinese characters | 64 | Chinese columns of the trial volume, each reviewed by eye |
+
+- **Manuscript gap:** the bank has no Manchu manuscript images, although the labelling queue is
+  manuscripts. Passing shows a user can read print. Manchu manuscript items must be added once
+  Manjurists can supply answers.
+- Synthetic images are rendered from all-rights-reserved fonts, so they stay out of any publication
+  until the fonts' terms are known.
 
 Requiring 20 in a row means persistence can eventually beat skill, and the image bank must be large:
 
@@ -172,6 +186,9 @@ Requiring 20 in a row means persistence can eventually beat skill, and the image
 | 80% | about 430 |
 
 **[Proposed]** Each script class needs at least 300 real images at launch.
+
+The introduction tells users about the hidden checks, their accuracy, and disputes. Those features arrive
+with the quality control milestone, so the text must be true before non-test users see it.
 
 ## 7. Quality control
 
@@ -294,7 +311,10 @@ dataset hub such as Hugging Face.
 | `cropReviews` | Competing crops awaiting an admin's ruling, and the outcome |
 | `assignments` | Which user was given which image, with no sign of whether it is a check |
 | `knownLabels` | Answers, their origin, and their state (active, retired, corrected). The only record of which images are checks |
-| `trainingAttempts` | Quiz answers and qualification by script class |
+| `trainingItems` | Quiz images, their answers, and their sources |
+| `trainingAttempts` | Append-only quiz answers |
+| `trainingStates` | The image each user must answer next |
+| `qualifications` | Which script classes each user may label |
 | `disputes` | Disputed test images and their outcomes |
 | `users` | Account, role, license agreement, credit preference |
 | `releases` | Version, parameters used, DOI |

@@ -26,6 +26,8 @@ python3 -m venv .venv && .venv/bin/pip install -r pipeline/requirements.txt
 .venv/bin/python pipeline/fetch_volume.py 10499177    # download a Harvard volume to data/
 .venv/bin/python pipeline/segment.py 10499177         # segment it into word crops
 npm run import-segments -w server -- 10499177 --production manuscript --script regular
+.venv/bin/python pipeline/build_training_bank.py --photos <dir> --lexicon <file> --fonts client/src/fonts --volume 10499177
+npm run import-training -w server -- --script regular
 USER_PASSWORD='...' npm run create-user -w server -- person@example.com [--admin]
 ```
 
@@ -36,6 +38,12 @@ USER_PASSWORD='...' npm run create-user -w server -- person@example.com [--admin
 - `client`: React app built with Vite. Optional fonts go in `client/src/fonts/`, which is not in git
 - `pipeline`: offline Python jobs for fetching and segmenting scans
 - `data`: downloaded scans, generated crops, and local image storage, not in git
+
+## Testing against a browser
+
+The owner runs dev servers on ports 3001 and 5173 against the `manchu-labelling` database, and another
+project's MongoDB uses port 27017. Run browser tests on other ports with `MONGODB_URI` set to a throwaway
+database, and `API_TARGET` pointing the client at that server.
 
 ## Working agreements
 
@@ -48,6 +56,7 @@ USER_PASSWORD='...' npm run create-user -w server -- person@example.com [--admin
 
 ## Rules that are easy to break
 
+- **Never send a quiz answer before the user answers.**
 - **Never let the API reveal a hidden check image.** Responses, image URLs, and IDs must look the same
   as those for ordinary images, and the client must not receive answers.
 - **Never delete or overwrite labels.** Annotations are append-only, and trust is computed at export.

@@ -1,21 +1,13 @@
-import { abkaiToManchu, manchuToMollendorff } from "@manchu-labelling/script";
+import { abkaiToManchu } from "@manchu-labelling/script";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { getNextImage, submitLabel, type LabelImage } from "../api.ts";
+import { AbkaiField } from "./AbkaiField.tsx";
+import { CategoryField } from "./CategoryField.tsx";
 import { CropImage } from "./CropImage.tsx";
 import { ManchuText } from "./ManchuText.tsx";
 import { PageView } from "./PageView.tsx";
 import { Reference } from "./Reference.tsx";
-
-const CATEGORIES = [
-  ["manchu", "Manchu"],
-  ["chinese", "Chinese"],
-  ["mongolian", "Mongolian"],
-  ["other_script", "Other script"],
-  ["non_text", "Not text"],
-  ["illegible", "Illegible"],
-  ["bad_crop", "Bad crop"],
-] as const;
 
 const PRODUCTION = [
   ["manuscript", "Manuscript"],
@@ -33,34 +25,6 @@ const SCRIPT = [
 ] as const;
 
 const confidence = (unsure: boolean) => (unsure ? "unconfident" : "confident");
-
-function AbkaiField(props: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  autoFocus?: boolean;
-}) {
-  const { text, invalid } = abkaiToManchu(props.value);
-  return (
-    <div className="abkai-field">
-      <label htmlFor={props.id}>{props.label}</label>
-      <input
-        id={props.id}
-        autoComplete="off"
-        autoCapitalize="none"
-        spellCheck={false}
-        autoFocus={props.autoFocus}
-        value={props.value}
-        onChange={(event) => props.onChange(event.target.value)}
-      />
-      {invalid.length > 0 && <p role="alert">Not Abkai: {invalid.join(" ")}</p>}
-      {text && (
-        <p className="romanization">Möllendorff: {manchuToMollendorff(text).text}</p>
-      )}
-    </div>
-  );
-}
 
 function LabelForm({ image, onDone }: { image: LabelImage; onDone: () => void }) {
   const [category, setCategory] = useState("manchu");
@@ -118,22 +82,7 @@ function LabelForm({ image, onDone }: { image: LabelImage; onDone: () => void })
       </div>
 
       <div className="fields">
-        <fieldset>
-          <legend>What is in this image?</legend>
-          <div className="choices">
-            {CATEGORIES.map(([value, name]) => (
-              <label key={value}>
-                <input
-                  type="radio"
-                  name="category"
-                  value={value}
-                  checked={category === value}
-                  onChange={() => setCategory(value)}
-                />
-                {name}
-              </label>
-            ))}
-          </div>
+        <CategoryField value={category} onChange={setCategory}>
           <label className="unsure">
             <input
               type="checkbox"
@@ -142,7 +91,7 @@ function LabelForm({ image, onDone }: { image: LabelImage; onDone: () => void })
             />
             Not sure
           </label>
-        </fieldset>
+        </CategoryField>
 
         {isManchu && (
           <>
