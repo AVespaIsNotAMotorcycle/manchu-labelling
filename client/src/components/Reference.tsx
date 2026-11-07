@@ -24,30 +24,32 @@ export function Reference() {
           </a>
         </li>
       </ul>
-      <table>
-        <thead>
-          <tr>
-            <th>Abkai</th>
-            <th>Initial</th>
-            <th>Medial</th>
-            <th>Final</th>
-          </tr>
-        </thead>
-        <tbody>
-          {REFERENCE_LETTERS.map(({ abkai, initial, medial, final }) => (
-            <tr key={abkai}>
-              <th scope="row">{abkai}</th>
-              {[initial, medial, final].map((form) => (
-                <td key={form}>
-                  <span className="manchu letter" lang="mnc">
-                    {form}
-                  </span>
-                </td>
-              ))}
+      <div className="letter-columns">
+        <table>
+          <thead>
+            <tr>
+              <th>Abkai</th>
+              <th>Initial</th>
+              <th>Medial</th>
+              <th>Final</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {REFERENCE_LETTERS.map(({ abkai, initial, medial, final }) => (
+              <tr key={abkai}>
+                <th scope="row">{abkai}</th>
+                {[initial, medial, final].map((form) => (
+                  <td key={form}>
+                    <span className="manchu letter" lang="mnc">
+                      {form}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </aside>
   );
 }

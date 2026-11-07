@@ -1,11 +1,12 @@
 :root {
-  --text: #1f2328;
-  --muted: #5d6570;
-  --line: #d5d9de;
+  --text: #171717;
+  --muted: #666666;
+  --line: #808080;
   --surface: #ffffff;
-  --background: #f5f4f0;
-  --accent: #8a2b1d;
-  font-family: system-ui, sans-serif;
+  --radius: 5px;
+  --right: #008000;
+  --wrong: #ff0000;
+  font-family: Arial, Helvetica, sans-serif;
   color: var(--text);
 }
 
@@ -15,7 +16,11 @@
 
 body {
   margin: 0;
-  background: var(--background);
+  background: var(--surface);
+}
+
+a {
+  color: inherit;
 }
 
 input,
@@ -30,40 +35,49 @@ select {
   width: 100%;
   margin-top: 0.25rem;
   padding: 0.5rem;
-  border: 1px solid var(--line);
-  border-radius: 4px;
+  border: 2px solid var(--text);
+  border-radius: var(--radius);
   background: var(--surface);
+  color: var(--text);
+}
+
+input[type="checkbox"] {
+  accent-color: var(--text);
 }
 
 button {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--accent);
-  border-radius: 4px;
-  background: var(--accent);
-  color: #fff;
+  padding: 0.5rem;
+  border: 2px solid var(--text);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
   cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+button:hover:enabled,
+button:focus:enabled {
+  background: var(--text);
+  color: var(--surface);
 }
 
 button:disabled {
-  opacity: 0.45;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-button.secondary {
-  background: transparent;
-  color: var(--accent);
-}
-
-button.link {
+button.link,
+button.link:hover:enabled,
+button.link:focus:enabled {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--accent);
+  color: inherit;
   text-decoration: underline;
 }
 
 [role="alert"] {
-  color: var(--accent);
+  color: var(--wrong);
 }
 
 .status {
@@ -79,8 +93,12 @@ button.link {
   justify-content: space-between;
   gap: 0.5rem 1rem;
   padding: 0.75rem 1rem;
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
+  box-shadow: rgba(0, 0, 0, 0.2) 0 5px 5px;
+}
+
+.top-bar strong {
+  font-size: 1.5rem;
+  font-weight: 800;
 }
 
 .font-picker {
@@ -108,37 +126,44 @@ button.link {
   max-width: 26rem;
   margin: 3rem auto;
   padding: 1.5rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  border: 2px solid var(--text);
+  border-radius: var(--radius);
 }
 
 .card h1 {
   margin: 0;
-  font-size: 1.4rem;
+  font-size: 2rem;
+  font-weight: 800;
 }
 
+/* Buttons joined into one switch, with one pressed. */
 .tabs {
   display: flex;
-  gap: 0.25rem;
-  padding: 0.5rem 1rem 0;
+  padding: 1rem 1rem 0;
 }
 
 .tabs button {
-  background: transparent;
-  color: var(--accent);
+  border-radius: 0;
+}
+
+.tabs button:first-child {
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.tabs button:last-child {
+  border-radius: 0 var(--radius) var(--radius) 0;
+  border-left-width: 0;
 }
 
 .tabs button[aria-current="true"] {
-  background: var(--accent);
-  color: #fff;
+  background: var(--text);
+  color: var(--surface);
 }
 
 .panel {
   padding: 1.25rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  border: 2px solid var(--text);
+  border-radius: var(--radius);
 }
 
 .introduction {
@@ -147,11 +172,13 @@ button.link {
 
 .introduction h1 {
   margin-top: 0;
-  font-size: 1.4rem;
+  font-size: 2rem;
+  font-weight: 800;
 }
 
 .introduction h2 {
-  font-size: 1.1rem;
+  font-size: 1.5rem;
+  font-weight: 600;
 }
 
 .progress {
@@ -163,22 +190,46 @@ button.link {
 }
 
 .progress progress {
+  display: block;
   width: 100%;
-  accent-color: var(--accent);
+  height: 1rem;
+  appearance: none;
+  overflow: hidden;
+  border: 2px solid var(--text);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.progress progress::-webkit-progress-bar {
+  background: var(--surface);
+}
+
+.progress progress::-webkit-progress-value {
+  background: var(--text);
+}
+
+.progress progress::-moz-progress-bar {
+  background: var(--text);
 }
 
 .result {
+  width: fit-content;
   margin: 0;
+  padding: 0.5rem;
+  border: 2px solid;
+  border-radius: var(--radius);
   font-size: 1.3rem;
   font-weight: 600;
 }
 
 .result.right {
-  color: #1d6b3a;
+  border-color: var(--right);
+  background: rgba(0, 255, 0, 0.2);
 }
 
 .result.wrong {
-  color: var(--accent);
+  border-color: var(--wrong);
+  background: rgba(255, 0, 0, 0.2);
 }
 
 dl {
@@ -189,7 +240,7 @@ dl {
 }
 
 dt {
-  color: var(--muted);
+  font-weight: 800;
 }
 
 dd {
@@ -204,18 +255,25 @@ dd {
   padding: 1rem;
 }
 
+/* The letter forms take two columns of letters once the form still fits beside them. */
+@media (min-width: 100rem) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr) 38rem;
+  }
+}
+
 .labelling {
   display: grid;
   grid-template-columns: minmax(0, auto) minmax(0, 1fr);
-  gap: 1rem;
+  gap: 2rem;
   padding: 1rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  border: 2px solid var(--text);
+  border-radius: var(--radius);
 }
 
 .comparison {
   display: flex;
+  flex-wrap: wrap;
   gap: 1.5rem;
 }
 
@@ -232,7 +290,7 @@ figcaption {
 .crop {
   display: block;
   max-width: 100%;
-  border: 1px solid var(--line);
+  border-radius: var(--radius);
 }
 
 .manchu {
@@ -242,32 +300,82 @@ figcaption {
 
 .manchu.preview {
   display: block;
-  min-width: 4rem;
-  min-height: 18rem;
-  font-size: 4.5rem;
+  min-width: 6rem;
+  min-height: 24rem;
+  font-size: 6.5rem;
 }
 
 .fields {
   display: grid;
   gap: 0.75rem;
   align-content: start;
+  justify-items: start;
+  max-width: 36rem;
+}
+
+.fields > * {
+  max-width: 100%;
+}
+
+.abkai-field,
+.fields details,
+.fields fieldset {
+  width: 100%;
 }
 
 fieldset {
+  min-width: 0;
   margin: 0;
-  padding: 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: 4px;
+  padding: 0;
+  border: 0;
 }
 
 legend {
-  padding: 0 0.25rem;
+  margin-bottom: 0.25rem;
+  padding: 0;
 }
 
+/* Radio buttons dressed as a switch, which keeps their arrow keys and announcements. */
 .choices {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 1rem;
+  padding: 0 0 2px 2px;
+}
+
+.choices label {
+  position: relative;
+  margin: 0 0 -2px -2px;
+  padding: 0.5rem;
+  border: 2px solid var(--text);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.choices label:first-child {
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.choices label:last-child {
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.choices label:has(input:checked) {
+  background: var(--text);
+  color: var(--surface);
+}
+
+.choices label:has(input:focus-visible) {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.choices input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .unsure {
@@ -319,14 +427,25 @@ legend {
   max-height: calc(100vh - 5rem);
   overflow-y: auto;
   padding: 1rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  border: 2px solid var(--text);
+  border-radius: var(--radius);
 }
 
 .reference h2 {
   margin: 0 0 0.5rem;
   font-size: 1.1rem;
+}
+
+/* One table flowing through two equal columns wherever both fit. */
+.letter-columns {
+  columns: 2 16rem;
+  column-gap: 1rem;
+}
+
+/* Chromium repeats the header in the second column only when the header cannot be split. */
+.reference tr,
+.reference thead {
+  break-inside: avoid;
 }
 
 .reference table {
@@ -337,7 +456,7 @@ legend {
 .reference th,
 .reference td {
   padding: 0.25rem;
-  border-bottom: 1px solid var(--line);
+  border: 1px solid var(--line);
   font-weight: normal;
   text-align: center;
 }
@@ -347,9 +466,18 @@ legend {
   font-size: 2.5rem;
 }
 
-@media (max-width: 60rem) {
-  .workspace,
+@media (max-width: 75rem) {
   .labelling {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .manchu.preview {
+    min-height: 16rem;
+  }
+}
+
+@media (max-width: 60rem) {
+  .workspace {
     grid-template-columns: minmax(0, 1fr);
   }
 

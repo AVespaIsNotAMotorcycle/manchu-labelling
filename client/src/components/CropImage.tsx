@@ -1,8 +1,8 @@
 import { useState } from "react";
 
-const SCALE = 2;
-const MAX_WIDTH = 256;
-const MAX_HEIGHT = 512;
+const SCALE = 3;
+const MAX_WIDTH = 384;
+const MAX_HEIGHT = 640;
 
 /**
  * Shows a crop enlarged by a fixed amount, so that words keep their sizes relative to each other. Only
