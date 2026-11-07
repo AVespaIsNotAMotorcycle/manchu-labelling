@@ -154,8 +154,7 @@ Users complete this section before they can do real work:
 **[Proposed]** quiz details, as built:
 
 - Qualification is per script class, using the same `script` values as volumes. A user only receives
-  images from volumes in classes they have qualified for. Passing is permanent, and hidden checks decide
-  whether later labels count.
+  images from volumes in classes they have qualified for.
 - The quiz covers category as well as transcription, so about 10% of images are not Manchu.
 - Transcriptions must match exactly. The intended word field is not scored.
 - At least 10 of the 20 images must be real. A real image is only forced when the window could not
@@ -214,6 +213,22 @@ with the quality control milestone, so the text must be true before non-test use
   their later labels count, and their earlier ones do not.
 - **[Proposed]** Trust uses the user's last 30 check images, with a threshold of 95% character
   accuracy.
+
+### Losing qualification
+
+Passing the quiz is not permanent. If a user does poorly on many hidden checks in a row, they lose
+qualification for that script class and must pass the quiz again before labelling it.
+
+- The quiz stays at 20 correct in a row, because users should be very good at this.
+- The quiz window restarts when qualification is lost. Earlier answers do not count, or a returning user
+  would pass immediately.
+- Quiz images already answered are not repeated until the bank runs out.
+- Existing labels are kept, as all labels are. Trust still decides whether they count.
+- If a dispute overturns a known label, the run of failures is recalculated, and qualification is
+  restored if that label caused the loss.
+- The message to the user is general. It does not say which images were checks.
+- **[Proposed]** Qualification is lost after 5 failed checks in a row. A check fails below 80% character
+  accuracy, so that one slip in a long word does not count as doing poorly.
 
 ### Feedback and disputes
 
