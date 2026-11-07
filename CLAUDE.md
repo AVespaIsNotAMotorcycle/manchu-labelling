@@ -18,12 +18,14 @@ npm install                  # install all workspaces
 npm test                     # run all tests
 npm run typecheck            # typecheck packages and server
 npm run build -w client      # typecheck and build the client
+docker compose up -d mongo   # MongoDB on port 27018
 npm run dev -w server        # API on port 3001
 npm run dev -w client        # client, proxying /api to the server
 
 python3 -m venv .venv && .venv/bin/pip install -r pipeline/requirements.txt
 .venv/bin/python pipeline/fetch_volume.py 10499177    # download a Harvard volume to data/
 .venv/bin/python pipeline/segment.py 10499177         # segment it into word crops
+npm run import-segments -w server -- 10499177 --production manuscript --script regular
 ```
 
 ## Layout
@@ -32,7 +34,7 @@ python3 -m venv .venv && .venv/bin/pip install -r pipeline/requirements.txt
 - `server`: Express API, written in TypeScript and run directly by Node
 - `client`: React app built with Vite
 - `pipeline`: offline Python jobs for fetching and segmenting scans
-- `data`: downloaded scans and generated crops, not in git
+- `data`: downloaded scans, generated crops, and local image storage, not in git
 
 ## Working agreements
 
