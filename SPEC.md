@@ -218,6 +218,23 @@ left out of releases and included once retired.
 
 The owner is not intended to be the reviewer. Manjurists will be approached for this role.
 
+### Accounts and security
+
+Login uses email and password for now. Passwords are hashed with scrypt, sessions are stored on the
+server in secure cookies, and login attempts are rate-limited.
+
+**Accounts are for testing only.** There is no registration route, and accounts are created from the
+command line. The following must be done before anyone other than test users gets an account:
+
+- Open registration through a verified process, with email verification
+- Password reset
+- Two-factor authentication or passkeys, required for reviewers and admins
+- A rate limit that also tracks each account, and alerts on repeated failures
+- A check of new passwords against known breaches
+- CSRF review, security headers, and HTTPS everywhere in production
+- A review of how account and contribution data can be deleted
+- A security review of the whole authentication flow
+
 ## 9. Dataset releases
 
 - **Versioned releases** are immutable and have a DOI. Each has a data card covering sources, label

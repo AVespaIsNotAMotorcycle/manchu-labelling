@@ -68,6 +68,25 @@ const LETTERS: readonly Letter[] = [
   ["ᡷᡳ", `jy${MODIFIER}`, "jy"],
 ];
 
+const JOINER = "\u200D";
+
+export interface ReferenceLetter {
+  abkai: string;
+  initial: string;
+  medial: string;
+  final: string;
+}
+
+/** Each single letter's positional forms. Joiners make a font draw the form for that position. */
+export const REFERENCE_LETTERS: readonly ReferenceLetter[] = LETTERS.filter(
+  ([manchu]) => [...manchu].length === 1 && manchu !== "ᡱ",
+).map(([manchu, abkai]) => ({
+  abkai,
+  initial: `${manchu}${JOINER}`,
+  medial: `${JOINER}${manchu}${JOINER}`,
+  final: `${JOINER}${manchu}`,
+}));
+
 /** Abkai `q` alone always means ᠴ. ᡱ is only entered through the sequence `qyʻ`. */
 const ABKAI_INPUT = new Map(
   LETTERS.filter(([manchu]) => manchu !== "ᡱ").map(([manchu, abkai]) => [abkai, manchu]),

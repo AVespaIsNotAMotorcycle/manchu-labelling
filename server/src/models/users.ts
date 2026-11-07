@@ -3,6 +3,8 @@ import { model, Schema } from "mongoose";
 const userSchema = new Schema(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    /** Never returned by queries unless asked for by name. */
+    passwordHash: { type: String, required: true, select: false },
     role: { type: String, enum: ["labeler", "reviewer", "admin"], default: "labeler" },
     /** When the user accepted the CC BY 4.0 license for their labels. */
     labelsLicenseAcceptedAt: Date,

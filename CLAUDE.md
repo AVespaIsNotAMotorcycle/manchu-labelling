@@ -26,6 +26,7 @@ python3 -m venv .venv && .venv/bin/pip install -r pipeline/requirements.txt
 .venv/bin/python pipeline/fetch_volume.py 10499177    # download a Harvard volume to data/
 .venv/bin/python pipeline/segment.py 10499177         # segment it into word crops
 npm run import-segments -w server -- 10499177 --production manuscript --script regular
+USER_PASSWORD='...' npm run create-user -w server -- person@example.com [--admin]
 ```
 
 ## Layout
@@ -51,4 +52,5 @@ npm run import-segments -w server -- 10499177 --production manuscript --script r
   as those for ordinary images, and the client must not receive answers.
 - **Never delete or overwrite labels.** Annotations are append-only, and trust is computed at export.
 - **Transcriptions record what is written,** not the intended word.
+- **Do not add public registration** until the security checklist in SPEC.md is done.
 - **Manchu Unicode is the stored form, without variation selectors.** Abkai is only an input method.
