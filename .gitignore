@@ -1,0 +1,6 @@
+# Scans and generated crops
+data/
+
+# Python
+.venv/
+__pycache__/
