@@ -17,6 +17,8 @@ segmentationRunSchema.plugin(appendOnly);
 const wordInstanceSchema = new Schema({
   page: { type: Schema.Types.ObjectId, ref: "Page", required: true, index: true },
   canonicalCrop: { type: Schema.Types.ObjectId, ref: "WordImage", required: true },
+  /** Set when an admin rules that this instance should not be used, such as a merged crop. */
+  retired: { type: Boolean, default: false },
 });
 
 const boxSchema = new Schema(
@@ -46,6 +48,23 @@ const wordImageSchema = new Schema({
 });
 wordImageSchema.plugin(appendOnly);
 
+/**
+ * Competing crops awaiting an admin's ruling. While a review is open, its word instances cannot be
+ * labelled or released.
+ */
+const cropReviewSchema = new Schema({
+  /** `same_word`: two crops of one word. `conflict`: crops that overlap too much to both be kept. */
+  reason: { type: String, enum: ["same_word", "conflict"], required: true },
+  instances: [{ type: Schema.Types.ObjectId, ref: "WordInstance", required: true }],
+  crops: [{ type: Schema.Types.ObjectId, ref: "WordImage", required: true }],
+  status: { type: String, enum: ["open", "resolved"], default: "open", index: true },
+  chosenCrop: { type: Schema.Types.ObjectId, ref: "WordImage" },
+  decidedBy: { type: Schema.Types.ObjectId, ref: "User" },
+  decidedAt: Date,
+  createdAt: { type: Date, default: Date.now, immutable: true },
+});
+
 export const SegmentationRun = model("SegmentationRun", segmentationRunSchema);
 export const WordInstance = model("WordInstance", wordInstanceSchema);
 export const WordImage = model("WordImage", wordImageSchema);
+export const CropReview = model("CropReview", cropReviewSchema);

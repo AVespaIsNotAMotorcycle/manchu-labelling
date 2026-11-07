@@ -4,7 +4,7 @@
  * Usage: npm run import-segments -w server -- 10499177 --production manuscript --script regular
  *
  * Each import adds a new segmentation run. A crop joins an existing word instance if it shows the same
- * word as a crop from an earlier run, and conflicts with earlier crops are reported for review.
+ * word as a crop from an earlier run. Competing crops go to an admin for a ruling.
  */
 
 import { randomUUID } from "node:crypto";
@@ -17,7 +17,7 @@ import mongoose, { Types } from "mongoose";
 
 import { connectDatabase } from "../db.ts";
 import { matchCrop, type Box } from "../instances.ts";
-import { SegmentationRun, WordImage, WordInstance } from "../models/crops.ts";
+import { CropReview, SegmentationRun, WordImage, WordInstance } from "../models/crops.ts";
 import { Page, Volume, PRODUCTION_TYPES, SCRIPT_TYPES } from "../models/sources.ts";
 
 const ROOT = resolve(import.meta.dirname, "../../..");
@@ -129,10 +129,9 @@ async function main(): Promise<void> {
     const box = toBox(word.box);
 
     const earlierCrops = await WordImage.find({ page, run: { $ne: run._id } }, "box instance").lean();
-    const match = matchCrop(box, earlierCrops);
-    if (match.conflict) conflicts += 1;
+    const { same, conflicts: conflicting } = matchCrop(box, earlierCrops);
 
-    const instanceId = match.instance ?? new Types.ObjectId();
+    const instanceId = same[0]?.instance ?? new Types.ObjectId();
     const crop = await WordImage.create({
       run: run._id,
       page,
@@ -145,12 +144,28 @@ async function main(): Promise<void> {
       imageKey: await store(join(volumeDirectory, "segments/crops", word.file), storage),
     });
 
-    if (match.instance) reused += 1;
-    else await WordInstance.create({ _id: instanceId, page, canonicalCrop: crop._id });
+    if (same.length > 0) {
+      reused += 1;
+      await CropReview.create({
+        reason: "same_word",
+        instances: [instanceId],
+        crops: [...same.map(({ _id }) => _id), crop._id],
+      });
+    } else {
+      await WordInstance.create({ _id: instanceId, page, canonicalCrop: crop._id });
+    }
+    if (conflicting.length > 0) {
+      conflicts += 1;
+      await CropReview.create({
+        reason: "conflict",
+        instances: [instanceId, ...conflicting.map(({ instance }) => instance)],
+        crops: [crop._id, ...conflicting.map(({ _id }) => _id)],
+      });
+    }
   }
 
   console.log(
-    `Imported ${words.length} crops: ${words.length - reused} new words, ${reused} matched earlier crops, ${conflicts} conflicts`,
+    `Imported ${words.length} crops: ${words.length - reused} new words, ${reused} matched earlier crops, ${conflicts} conflicts. Crops needing a ruling: ${reused + conflicts}`,
   );
   await mongoose.disconnect();
 }

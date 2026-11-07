@@ -7,8 +7,9 @@ import mongoose, { Types } from "mongoose";
 
 import { connectDatabase } from "../src/db.ts";
 import { compareCrops, matchCrop } from "../src/instances.ts";
+import { releasableInstances, ruleOnReview } from "../src/crop-reviews.ts";
 import { Annotation, Assignment, KnownLabel } from "../src/models/labels.ts";
-import { WordImage } from "../src/models/crops.ts";
+import { CropReview, WordImage, WordInstance } from "../src/models/crops.ts";
 
 let database: MongoMemoryServer;
 
@@ -125,10 +126,114 @@ test("compares crops from different runs", () => {
 
 test("a crop matching a word has no conflict, even inside a neighbour", () => {
   const hook = { x: 100, y: 100, width: 20, height: 20 };
-  const neighbour = { box: { x: 90, y: 90, width: 60, height: 200 }, instance: "neighbour" };
-  const sameWord = { box: { x: 100, y: 100, width: 20, height: 21 }, instance: "hook" };
+  const neighbour = {
+    _id: "a",
+    box: { x: 90, y: 90, width: 60, height: 200 },
+    instance: "neighbour",
+  };
+  const sameWord = { _id: "b", box: { x: 100, y: 100, width: 20, height: 21 }, instance: "hook" };
 
-  assert.deepEqual(matchCrop(hook, [neighbour, sameWord]), { instance: "hook", conflict: false });
-  assert.deepEqual(matchCrop(hook, [neighbour]), { conflict: true });
-  assert.deepEqual(matchCrop(hook, []), { conflict: false });
+  assert.deepEqual(matchCrop(hook, [neighbour, sameWord]), { same: [sameWord], conflicts: [] });
+  assert.deepEqual(matchCrop(hook, [neighbour]), { same: [], conflicts: [neighbour] });
+  assert.deepEqual(matchCrop(hook, []), { same: [], conflicts: [] });
+});
+
+async function instanceWithCrop(key: string) {
+  const crops = await WordImage.create(crop(key));
+  const instance = await WordInstance.create({
+    _id: crops.instance,
+    page: crops.page,
+    canonicalCrop: crops._id,
+  });
+  return { crop: crops, instance };
+}
+
+test("words with an open review cannot be released", async () => {
+  const clean = await instanceWithCrop("clean");
+  const disputed = await instanceWithCrop("disputed");
+  const second = await WordImage.create(crop("second"));
+  await CropReview.create({
+    reason: "same_word",
+    instances: [disputed.instance._id],
+    crops: [disputed.crop._id, second._id],
+  });
+
+  const released = await releasableInstances();
+  assert.deepEqual(
+    released.map(({ _id }) => String(_id)),
+    [String(clean.instance._id)],
+  );
+});
+
+test("a ruling on one word picks the chosen crop and releases the word", async () => {
+  const word = await instanceWithCrop("first");
+  const second = await WordImage.create({ ...crop("second"), instance: word.instance._id });
+  const review = await CropReview.create({
+    reason: "same_word",
+    instances: [word.instance._id],
+    crops: [word.crop._id, second._id],
+  });
+  const admin = new Types.ObjectId();
+
+  await ruleOnReview(review._id, second._id, admin);
+
+  const updated = await WordInstance.findById(word.instance._id);
+  assert.equal(String(updated?.canonicalCrop), String(second._id));
+  assert.equal((await releasableInstances()).length, 1);
+  const closed = await CropReview.findById(review._id);
+  assert.equal(closed?.status, "resolved");
+  assert.equal(String(closed?.decidedBy), String(admin));
+});
+
+test("a ruling on a conflict retires the losing word and closes its other reviews", async () => {
+  const merged = await instanceWithCrop("merged");
+  const partOne = await instanceWithCrop("part-one");
+  const partTwo = await instanceWithCrop("part-two");
+  const open = (part: typeof partOne) =>
+    CropReview.create({
+      reason: "conflict",
+      instances: [merged.instance._id, part.instance._id],
+      crops: [merged.crop._id, part.crop._id],
+    });
+  const first = await open(partOne);
+  const second = await open(partTwo);
+
+  await ruleOnReview(first._id, partOne.crop._id, new Types.ObjectId());
+
+  assert.equal((await WordInstance.findById(merged.instance._id))?.retired, true);
+  assert.equal((await CropReview.findById(second._id))?.status, "resolved");
+  const released = (await releasableInstances()).map(({ _id }) => String(_id)).sort();
+  assert.deepEqual(released, [String(partOne.instance._id), String(partTwo.instance._id)].sort());
+});
+
+test("a ruling leaves the chosen word's other conflicts open", async () => {
+  const word = await instanceWithCrop("word");
+  const firstRival = await instanceWithCrop("first-rival");
+  const secondRival = await instanceWithCrop("second-rival");
+  const open = (rival: typeof word) =>
+    CropReview.create({
+      reason: "conflict",
+      instances: [word.instance._id, rival.instance._id],
+      crops: [word.crop._id, rival.crop._id],
+    });
+  const first = await open(firstRival);
+  const second = await open(secondRival);
+
+  await ruleOnReview(first._id, word.crop._id, new Types.ObjectId());
+
+  assert.equal((await CropReview.findById(second._id))?.status, "open");
+  assert.deepEqual(await releasableInstances(), []);
+});
+
+test("a ruling must choose a crop under review", async () => {
+  const word = await instanceWithCrop("first");
+  const review = await CropReview.create({
+    reason: "same_word",
+    instances: [word.instance._id],
+    crops: [word.crop._id],
+  });
+  await assert.rejects(
+    ruleOnReview(review._id, new Types.ObjectId(), new Types.ObjectId()),
+    /not part of this review/,
+  );
 });

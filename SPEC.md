@@ -260,6 +260,7 @@ dataset hub such as Hugging Face.
 | `wordInstances` | One physical word on a page, and the one crop to use for it |
 | `wordImages` | Crops: run, page, word instance, bounding box, reading order, image key |
 | `annotations` | Append-only labels with user, timestamps, confidence, typed Abkai, and converter version |
+| `cropReviews` | Competing crops awaiting an admin's ruling, and the outcome |
 | `assignments` | Which user was given which image, with no sign of whether it is a check |
 | `knownLabels` | Answers, their origin, and their state (active, retired, corrected). The only record of which images are checks |
 | `trainingAttempts` | Quiz answers and qualification by script class |
@@ -275,10 +276,10 @@ dataset hub such as Hugging Face.
   canonical crop. Exports read word instances, so a second crop of a word cannot be published.
 - **Crops are matched across runs by overlap.** Crops with an intersection-over-union of at least 0.6
   are the same word. If a new crop has at least half its area inside an earlier crop without matching
-  any word, it is reported as a conflict, such as a merged crop and a word inside it.
-- **[Proposed]** The first crop of a word stays canonical until a reviewer changes it, or until its
-  final label is `bad_crop` and another crop exists. A release fails if any unresolved conflict remains
-  between canonical crops.
+  any word, the two conflict, as with a merged crop and a word inside it.
+- **Competing crops need an admin's ruling.** If a word has more than one crop, or crops conflict, they
+  go into a review queue. Until an admin rules, the words involved cannot be labelled or released. The
+  chosen crop becomes canonical, and any word that lost a conflict is retired.
 - **Corrections are new annotations** that point to the one they replace.
 - **Trust is never stored on labels.** It is calculated from the history.
 - **Split crops** (planned) become new crops with their own word instances, linked to the parent.
