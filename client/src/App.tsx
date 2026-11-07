@@ -1,27 +1,44 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { abkaiToManchu, manchuForDisplay, manchuToMollendorff } from "@manchu-labelling/script";
+import { acceptLicense, getAccount, logOut, type Account } from "./api.ts";
+import { Labelling } from "./components/Labelling.tsx";
+import { LicensePrompt } from "./components/LicensePrompt.tsx";
+import { Login } from "./components/Login.tsx";
 
 export function App() {
-  const [abkai, setAbkai] = useState("manju");
-  const { text: manchu, invalid } = abkaiToManchu(abkai);
+  const [account, setAccount] = useState<Account | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getAccount()
+      .then(setAccount)
+      .catch(() => setAccount(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <p className="status">Loading…</p>;
+  if (!account) return <Login onLogIn={setAccount} />;
 
   return (
-    <main>
-      <h1>Manchu Labelling</h1>
-      <label htmlFor="abkai">Abkai</label>
-      <input
-        id="abkai"
-        autoComplete="off"
-        spellCheck={false}
-        value={abkai}
-        onChange={(event) => setAbkai(event.target.value)}
-      />
-      {invalid.length > 0 && <p role="alert">Not Abkai: {invalid.join(" ")}</p>}
-      <p>Möllendorff: {manchuToMollendorff(manchu).text}</p>
-      <p className="manchu" lang="mnc">
-        {manchuForDisplay(manchu)}
-      </p>
-    </main>
+    <>
+      <header className="top-bar">
+        <strong>Manchu Labelling</strong>
+        <span>
+          {account.email}{" "}
+          <button
+            type="button"
+            className="link"
+            onClick={() => logOut().then(() => setAccount(null))}
+          >
+            Log out
+          </button>
+        </span>
+      </header>
+      {account.licenseAccepted ? (
+        <Labelling />
+      ) : (
+        <LicensePrompt onAccept={() => acceptLicense().then(setAccount)} />
+      )}
+    </>
   );
 }
