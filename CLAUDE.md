@@ -28,7 +28,7 @@ python3 -m venv .venv && .venv/bin/pip install -r pipeline/requirements.txt
 npm run import-segments -w server -- 10499177 --production manuscript --script regular
 .venv/bin/python pipeline/build_training_bank.py --photos <dir> --lexicon <file> --fonts client/src/fonts --volume 10499177
 npm run import-training -w server -- --script regular
-USER_PASSWORD='...' npm run create-user -w server -- person@example.com [--admin]
+npm run create-user -w server -- person@example.com [--admin]   # prompts for the password
 ```
 
 ## Layout
