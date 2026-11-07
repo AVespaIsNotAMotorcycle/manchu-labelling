@@ -266,6 +266,9 @@ command line. The following must be done before anyone other than test users get
 - Password reset
 - Two-factor authentication or passkeys, required for reviewers and admins
 - A rate limit that also tracks each account, and alerts on repeated failures
+- Rate limit counts that survive a server restart, kept in MongoDB rather than in memory
+- A limit on concurrent password hashing, so that a burst of logins cannot delay other requests
+- MongoDB authentication and a private network in production
 - A check of new passwords against known breaches
 - CSRF review, security headers, and HTTPS everywhere in production
 - A review of how account and contribution data can be deleted
