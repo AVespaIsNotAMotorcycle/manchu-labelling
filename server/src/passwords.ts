@@ -1,13 +1,13 @@
 import { randomBytes, scrypt, timingSafeEqual, type ScryptOptions } from "node:crypto";
 
+import { passwordProblems } from "@manchu-labelling/passwords";
+
 /** OWASP's recommended scrypt settings. */
 const COST = 2 ** 17;
 const BLOCK_SIZE = 8;
 const PARALLELIZATION = 1;
 const KEY_LENGTH = 32;
 const MAX_MEMORY = 256 * 1024 * 1024;
-
-export const MIN_PASSWORD_LENGTH = 12;
 
 function derive(password: string, salt: Buffer, options: ScryptOptions): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -17,12 +17,19 @@ function derive(password: string, salt: Buffer, options: ScryptOptions): Promise
   });
 }
 
-/** Hashes a password, keeping the settings in the result so that they can be raised later. */
-export async function hashPassword(password: string): Promise<string> {
+/** Keeps the settings in the result so that they can be raised later. */
+async function hash(password: string): Promise<string> {
   const salt = randomBytes(16);
   const options = { N: COST, r: BLOCK_SIZE, p: PARALLELIZATION, maxmem: MAX_MEMORY };
   const key = await derive(password, salt, options);
   return ["scrypt", COST, BLOCK_SIZE, PARALLELIZATION, salt.toString("base64"), key.toString("base64")].join("$");
+}
+
+/** Every new password passes through here, so the rules cannot be skipped by a new route. */
+export async function hashPassword(password: string): Promise<string> {
+  const problems = passwordProblems(password);
+  if (problems.length > 0) throw new Error(`Password needs ${problems.join(", ")}`);
+  return hash(password);
 }
 
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
@@ -38,4 +45,4 @@ export async function verifyPassword(password: string, stored: string): Promise<
 }
 
 /** Checked when an email is unknown, so that login takes the same time either way. */
-export const DECOY_HASH = await hashPassword(randomBytes(32).toString("hex"));
+export const DECOY_HASH = await hash(randomBytes(32).toString("hex"));

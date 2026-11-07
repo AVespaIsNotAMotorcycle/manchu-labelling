@@ -34,6 +34,7 @@ USER_PASSWORD='...' npm run create-user -w server -- person@example.com [--admin
 ## Layout
 
 - `packages/script`: conversion between Manchu Unicode, Abkai, and Möllendorff, shared by client and server
+- `packages/passwords`: rules for new passwords, shared by client and server
 - `server`: Express API, written in TypeScript and run directly by Node
 - `client`: React app built with Vite. Optional fonts go in `client/src/fonts/`, which is not in git
 - `pipeline`: offline Python jobs for fetching and segmenting scans

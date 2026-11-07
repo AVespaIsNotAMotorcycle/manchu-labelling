@@ -18,7 +18,7 @@ import { Qualification, TrainingAttempt, TrainingItem } from "../src/models/trai
 import { User } from "../src/models/users.ts";
 import { hashPassword } from "../src/passwords.ts";
 
-const PASSWORD = "correct horse battery";
+const PASSWORD = "Correct horse battery 1";
 const CROP_KEY = "11111111-1111-4111-8111-111111111111.jpg";
 const PAGE_KEY = "22222222-2222-4222-8222-222222222222.jpg";
 

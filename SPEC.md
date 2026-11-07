@@ -259,6 +259,11 @@ The owner is not intended to be the reviewer. Manjurists will be approached for 
 Login uses email and password for now. Passwords are hashed with scrypt, sessions are stored on the
 server in secure cookies, and login attempts are rate-limited.
 
+New passwords need at least 12 characters, with an upper-case letter, a lower-case letter, a number,
+and a symbol. The rules live in `packages/passwords`, so that the server and any client form that sets
+a password apply the same check. The server always checks. The login form does not, since it does not
+set a password.
+
 **Accounts are for testing only.** There is no registration route, and accounts are created from the
 command line. The following must be done before anyone other than test users gets an account:
 
