@@ -22,22 +22,35 @@ owner has not yet approved. Everything else is agreed. Unresolved questions are 
 
 - **Harvard-Yenching** is the first source. Harvard claims no copyright on openly available
   reproductions of works that are public domain in the US. Vendor-digitized items may be excluded, and
-  its policy does not address bulk use or derivative datasets.
+  its policy does not address bulk use or derivative datasets. Its IIIF manifests link to general terms
+  and carry no per-item rights statement, so each volume must be assessed. Volumes dated after about
+  1900 need extra care, because the policy only covers works that are public domain in the US.
 - **Staatsbibliothek zu Berlin** is a possible later source. Its terms must be confirmed from the
   official site or the items themselves. Copies on third-party sites describe CC BY-NC-SA 3.0 DE, and
   some items carry a Public Domain Mark. If NC-SA applies, it binds everyone who reuses those images,
-  not just this project, so they could need a separate release package.
+  not just this project. Crops from those images would have to stay under NC-SA, so they would go in a
+  separate release package.
+- **Sun et al. (2026)** is a [CC BY 4.0](https://doi.org/10.57760/sciencedb.25676) set of 24,280 printed
+  word images with labels and page sources. It can supply labelled print images for the quiz, with
+  attribution. It cannot supply hidden checks, because its print scans would stand out in manuscript
+  work.
 - Rights are recorded **per source volume**: rights statement, attribution text, and permanent link.
 - Exports can be filtered by license, and each record carries its attribution.
 - **Labels and images are licensed separately.** Contributors agree to the labels license at signup.
-  **[Proposed]** CC BY 4.0 for labels.
+  **[Proposed]** CC BY 4.0 for labels. A transcription records the text of a public-domain work rather
+  than adapting a photograph of it, so labels probably do not inherit ShareAlike from NC-SA images.
+  This reasoning is unsettled, and it stops mattering if releases use only Harvard images.
 
 ## 3. Ingestion pipeline
 
 1. Choose volumes and record their metadata and rights.
-2. Fetch page images through IIIF where available.
-3. Segment pages into word images. Pages may be bilingual, and text runs vertically in columns from
-   left to right.
+   Catalog records cannot be relied on for this: Harvard's manuscripts are often recorded with the form
+   "print", and with Chinese as their only language in the manifest.
+2. Fetch page images through IIIF where available. Harvard manifests are at
+   `https://nrs.harvard.edu/URN-3:FHCL:<id>:MANIFEST:3`.
+3. Segment pages into word images. Harvard images are usually two-page spreads, so they are split
+   first. Pages may be bilingual, have ink showing through from the other side, and contain text that
+   runs vertically in columns from left to right.
 4. Store each crop with its **source page, bounding box, and reading order** (page, column, word
    index), so that others can rebuild lines and pages.
 5. Set production and script style for the volume (section 4).
@@ -117,6 +130,8 @@ Users complete this section before they can do real work:
 - The quiz covers category as well as transcription, so it includes non-Manchu images.
 - Transcriptions must match exactly. The intended word field is not scored.
 - Quiz images are never used as hidden checks.
+- Print images can come from Sun et al. (2026). Manuscript qualification needs real manuscript images
+  from the same kinds of sources as the work itself.
 - Synthetic images can be generated without limit, using the `dots-and-circles` generator (font
   licenses need checking). They are easier than real scans, so at least half of the 20-image window
   must be real.
@@ -229,7 +244,8 @@ dataset hub such as Hugging Face.
 Each milestone ends with a check-in.
 
 1. **Trial:** take one Harvard-Yenching manuscript volume through IIIF and segmentation, then measure
-   crop quality and file sizes.
+   crop quality and file sizes. **[Proposed]** Use *Chao ben Man wen ce* 鈔本滿文册 (19th century, 123
+   images, `URN-3:FHCL:10499177`), a neat hand with Manchu and Chinese in alternating columns.
 2. **Foundations:** project scaffolding, data model, and the Abkai/Unicode converter with tests.
 3. **Labelling:** labelling screen, page view, live preview, reference.
 4. **Training:** quiz, rolling score, qualification.
@@ -245,8 +261,6 @@ Each milestone ends with a check-in.
 3. **Free variation selectors:** does the stored form keep them? They affect how letters display, and
    they are a known weak spot in `dots-and-circles`. This needs a rendering test and expert input.
 4. **Abkai `q` input:** how should users distinguish the two letters?
-5. **First known labels:** until Manjurists are involved, where do they come from? Can existing
-   transcriptions be aligned to scans?
-6. **Existing data:** what licenses apply to the Sun et al. (2026) dataset and the ManchuOCR project, if
-   either is used for training images?
-7. **Hosting:** where do the app and database run in production?
+5. **Manuscript known labels:** print is covered by Sun et al. (2026), but who transcribes the first
+   manuscript images, and can existing transcriptions be aligned to scans?
+6. **Hosting:** where do the app and database run in production?
