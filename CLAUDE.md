@@ -33,7 +33,7 @@ USER_PASSWORD='...' npm run create-user -w server -- person@example.com [--admin
 
 - `packages/script`: conversion between Manchu Unicode, Abkai, and Möllendorff, shared by client and server
 - `server`: Express API, written in TypeScript and run directly by Node
-- `client`: React app built with Vite
+- `client`: React app built with Vite. Optional fonts go in `client/src/fonts/`, which is not in git
 - `pipeline`: offline Python jobs for fetching and segmenting scans
 - `data`: downloaded scans, generated crops, and local image storage, not in git
 
@@ -53,4 +53,5 @@ USER_PASSWORD='...' npm run create-user -w server -- person@example.com [--admin
 - **Never delete or overwrite labels.** Annotations are append-only, and trust is computed at export.
 - **Transcriptions record what is written,** not the intended word.
 - **Do not add public registration** until the security checklist in SPEC.md is done.
+- **Never commit the fonts in `client/src/fonts/`.** They are all rights reserved and this repo is public.
 - **Manchu Unicode is the stored form, without variation selectors.** Abkai is only an input method.

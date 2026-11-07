@@ -103,7 +103,7 @@ Manjurists.
 - `'` is accepted in place of the Abkai `ʻ` when typing.
 - **Free variation selectors are not stored**, at least for now. A label records letters, not which
   shape of a letter the page used.
-- The preview uses Noto Sans Mongolian. Without selectors, 19 of 121 dictionary words displayed
+- The preview uses Noto Sans Mongolian as its fallback. Without selectors, 19 of 121 dictionary words displayed
   differently in a browser test. Most differences are slight, but the standalone word *i* shows its normal
   form, so the preview adds a selector for display only when the whole word is ᡳ.
 
@@ -113,7 +113,11 @@ Manjurists.
   the word.
 - As the user types, the word is rendered in Manchu script next to the image, so they can compare the
   two. Rendering needs testing, because digital Manchu display is not fully settled.
-- The letter-form reference is always available.
+- The letter-form reference is always available, with links to Roth Li's *The Manchu script* and
+  *Introduction to Manchu in 21 Lessons*. These are linked rather than reproduced because their license
+  is unknown.
+- Users can change the Manchu font from the top bar without leaving the page, and the choice is kept in
+  their browser. It applies to the preview and the reference.
 - There is **no dictionary check**. Manchu is agglutinative, so valid words may be missing from any
   dictionary, and a check would also pull labelers away from recording what is written.
 - Each image is labeled independently, and labelers cannot see other people's answers.
@@ -234,6 +238,16 @@ command line. The following must be done before anyone other than test users get
 - CSRF review, security headers, and HTTPS everywhere in production
 - A review of how account and contribution data can be deleted
 - A security review of the whole authentication flow
+- Permission for any font served to users (see below)
+
+### Fonts
+
+The Abkai and XM fonts are marked all rights reserved, and four XM fonts carry a Monotype license notice.
+No license allowing redistribution has been found. They are kept out of git, and the app offers only the
+fonts present, falling back to Noto Sans Mongolian, which is bundled.
+
+Serving a font to a browser gives a copy of it to that user. **Before non-test users get access, each
+font must have permission from its rights holder or be removed.**
 
 ## 9. Dataset releases
 

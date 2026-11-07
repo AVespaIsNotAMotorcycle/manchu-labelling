@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { acceptLicense, getAccount, logOut, type Account } from "./api.ts";
+import { FontPicker } from "./components/FontPicker.tsx";
 import { Labelling } from "./components/Labelling.tsx";
 import { LicensePrompt } from "./components/LicensePrompt.tsx";
 import { Login } from "./components/Login.tsx";
@@ -23,6 +24,7 @@ export function App() {
     <>
       <header className="top-bar">
         <strong>Manchu Labelling</strong>
+        <FontPicker />
         <span>
           {account.email}{" "}
           <button

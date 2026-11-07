@@ -74,11 +74,32 @@ button.link {
 
 .top-bar {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.5rem 1rem;
   padding: 0.75rem 1rem;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
+}
+
+.font-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.font-picker select {
+  width: auto;
+  margin-top: 0;
+  padding: 0.25rem;
+}
+
+.resources {
+  margin: 0 0 0.75rem;
+  padding-left: 1.1rem;
+  font-size: 0.9rem;
 }
 
 .card {
@@ -137,7 +158,7 @@ figcaption {
 }
 
 .manchu {
-  font-family: "Noto Sans Mongolian", serif;
+  font-family: var(--manchu-font, "Noto Sans Mongolian"), "Noto Sans Mongolian", serif;
   writing-mode: vertical-lr;
 }
 

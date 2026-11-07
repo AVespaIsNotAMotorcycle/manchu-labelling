@@ -8,3 +8,6 @@ __pycache__/
 # Node
 node_modules/
 dist/
+
+# Manchu fonts are all rights reserved, so they must not go in this public repo
+client/src/fonts/
