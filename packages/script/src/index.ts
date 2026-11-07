@@ -6,8 +6,14 @@
  * `abkaiToManchu` should ever create stored text.
  */
 
+/** Stored with each annotation. Increase this when a change alters conversion output. */
+export const CONVERTER_VERSION = 1;
+
 /** Stands for a letter that cannot be read. */
 export const UNREADABLE = "?";
+
+/** Matches text that contains only Manchu letters and unreadable-letter marks. */
+export const STORED_MANCHU = /^[\u1820-\u1877?]+$/;
 
 const MODIFIER = "ʻ";
 const MOLLENDORFF_MODIFIER = "῾";
@@ -104,6 +110,16 @@ function convert(input: string, keys: string[], lookup: (key: string) => string)
 /** Removes the variation selectors that stored text leaves out. */
 export function stripVariationSelectors(manchu: string): string {
   return manchu.replace(VARIATION_SELECTORS, "");
+}
+
+/**
+ * Returns text for display only, and must never be stored.
+ *
+ * Fonts show a lone ᡳ in its ordinary form, but the word *i* is written as a hook, which needs a variation
+ * selector.
+ */
+export function manchuForDisplay(manchu: string): string {
+  return manchu === "ᡳ" ? "ᡳ\u180B" : manchu;
 }
 
 /** Converts typed Abkai to Manchu Unicode. */

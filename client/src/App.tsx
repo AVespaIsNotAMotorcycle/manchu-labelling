@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { abkaiToManchu, manchuToMollendorff } from "@manchu-labelling/script";
+import { abkaiToManchu, manchuForDisplay, manchuToMollendorff } from "@manchu-labelling/script";
 
 export function App() {
   const [abkai, setAbkai] = useState("manju");
@@ -20,7 +20,7 @@ export function App() {
       {invalid.length > 0 && <p role="alert">Not Abkai: {invalid.join(" ")}</p>}
       <p>Möllendorff: {manchuToMollendorff(manchu).text}</p>
       <p className="manchu" lang="mnc">
-        {manchu}
+        {manchuForDisplay(manchu)}
       </p>
     </main>
   );

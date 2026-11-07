@@ -3,8 +3,10 @@ import { test } from "node:test";
 
 import {
   abkaiToManchu,
+  manchuForDisplay,
   manchuToAbkai,
   manchuToMollendorff,
+  STORED_MANCHU,
   stripVariationSelectors,
 } from "../src/index.ts";
 
@@ -69,4 +71,15 @@ test("reads ᡱ alone as q, since Abkai has no separate letter for it", () => {
 test("removes variation selectors", () => {
   assert.equal(stripVariationSelectors("ᠮ᠋ᠠ᠌ᠨ᠍"), "ᠮᠠᠨ");
   assert.equal(manchuToAbkai("ᠮ᠋ᠠ").text, "ma");
+});
+
+test("displays the standalone word i as a hook, and leaves other words unchanged", () => {
+  assert.equal(manchuForDisplay("ᡳ"), "ᡳ\u180B");
+  assert.equal(manchuForDisplay("ᠪᡳ"), "ᠪᡳ");
+});
+
+test("stored text allows letters and unreadable marks, but not variation selectors", () => {
+  assert.match("ᠮᠠ?ᠵᡠ", STORED_MANCHU);
+  assert.doesNotMatch("ᡳ\u180B", STORED_MANCHU);
+  assert.doesNotMatch("manju", STORED_MANCHU);
 });
