@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "server",
+    "client"
   ],
   "engines": {
     "node": ">=24"
