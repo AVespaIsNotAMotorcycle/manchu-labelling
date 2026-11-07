@@ -152,8 +152,7 @@ figcaption {
 
 .crop {
   display: block;
-  max-height: 26rem;
-  max-width: 12rem;
+  max-width: 100%;
   border: 1px solid var(--line);
 }
 

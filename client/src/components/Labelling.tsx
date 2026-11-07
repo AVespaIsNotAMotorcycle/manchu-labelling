@@ -2,6 +2,7 @@ import { abkaiToManchu, manchuToMollendorff } from "@manchu-labelling/script";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { getNextImage, submitLabel, type LabelImage } from "../api.ts";
+import { CropImage } from "./CropImage.tsx";
 import { ManchuText } from "./ManchuText.tsx";
 import { PageView } from "./PageView.tsx";
 import { Reference } from "./Reference.tsx";
@@ -106,7 +107,7 @@ function LabelForm({ image, onDone }: { image: LabelImage; onDone: () => void })
       <div className="comparison">
         <figure>
           <figcaption>Image</figcaption>
-          <img className="crop" src={image.imageUrl} alt="The word to label" />
+          <CropImage src={image.imageUrl} />
         </figure>
         {isManchu && (
           <figure>
