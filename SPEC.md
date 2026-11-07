@@ -25,21 +25,20 @@ owner has not yet approved. Everything else is agreed. Unresolved questions are 
   its policy does not address bulk use or derivative datasets. Its IIIF manifests link to general terms
   and carry no per-item rights statement, so each volume must be assessed. Volumes dated after about
   1900 need extra care, because the policy only covers works that are public domain in the US.
-- **Staatsbibliothek zu Berlin** is a possible later source. Its terms must be confirmed from the
-  official site or the items themselves. Copies on third-party sites describe CC BY-NC-SA 3.0 DE, and
-  some items carry a Public Domain Mark. If NC-SA applies, it binds everyone who reuses those images,
-  not just this project. Crops from those images would have to stay under NC-SA, so they would go in a
-  separate release package.
+- **Staatsbibliothek zu Berlin** is deferred. **Harvard images are the only scans used for now.** If
+  Berlin is reconsidered, its terms must be confirmed from the official site or the items themselves.
+  Copies on third-party sites describe CC BY-NC-SA 3.0 DE, and some items carry a Public Domain Mark. If
+  NC-SA applies, crops from those images would have to stay under NC-SA and go in a separate package.
 - **Sun et al. (2026)** is a [CC BY 4.0](https://doi.org/10.57760/sciencedb.25676) set of 24,280 printed
   word images with labels and page sources. It can supply labelled print images for the quiz, with
-  attribution. It cannot supply hidden checks, because its print scans would stand out in manuscript
-  work.
+  attribution. A test run will also use it for hidden checks, to see whether its images work there or
+  stand out from manuscript work (section 7).
 - Rights are recorded **per source volume**: rights statement, attribution text, and permanent link.
 - Exports can be filtered by license, and each record carries its attribution.
-- **Labels and images are licensed separately.** Contributors agree to the labels license at signup.
-  **[Proposed]** CC BY 4.0 for labels. A transcription records the text of a public-domain work rather
-  than adapting a photograph of it, so labels probably do not inherit ShareAlike from NC-SA images.
-  This reasoning is unsettled, and it stops mattering if releases use only Harvard images.
+- **Labels and images are licensed separately.** Labels are **CC BY 4.0**, and contributors agree to
+  this at signup.
+- No publication is planned yet, so releases (section 9) are a design target rather than a near-term
+  deadline.
 
 ## 3. Ingestion pipeline
 
@@ -152,6 +151,8 @@ Requiring 20 in a row means persistence can eventually beat skill, and the image
 
 - Known-label images are mixed into normal work without being identified as such.
 - They are **real scans only**, because synthetic images would stand out.
+- A test run uses Sun et al. (2026) print images as hidden checks. Afterward, we decide whether they
+  are too recognizable to keep using.
 - Each user sees a given check image at most once.
 - **[Proposed]** Checks make up about 20% of a user's first 100 images and 5–10% after that.
 - Nothing in the API may reveal a check image. Responses, image URLs, and IDs look the same as those
@@ -244,8 +245,8 @@ dataset hub such as Hugging Face.
 Each milestone ends with a check-in.
 
 1. **Trial:** take one Harvard-Yenching manuscript volume through IIIF and segmentation, then measure
-   crop quality and file sizes. **[Proposed]** Use *Chao ben Man wen ce* 鈔本滿文册 (19th century, 123
-   images, `URN-3:FHCL:10499177`), a neat hand with Manchu and Chinese in alternating columns.
+   crop quality and file sizes. The volume is *Chao ben Man wen ce* 鈔本滿文册 (19th century, 123 images,
+   `URN-3:FHCL:10499177`), a neat hand with Manchu and Chinese in alternating columns.
 2. **Foundations:** project scaffolding, data model, and the Abkai/Unicode converter with tests.
 3. **Labelling:** labelling screen, page view, live preview, reference.
 4. **Training:** quiz, rolling score, qualification.
@@ -256,11 +257,9 @@ Each milestone ends with a check-in.
 
 ## 12. Open questions
 
-1. **Berlin terms:** what are the official terms, and do they apply to these items?
-2. **Labels license:** CC BY 4.0 as proposed, or CC0 for the fewest restrictions on reuse?
-3. **Free variation selectors:** does the stored form keep them? They affect how letters display, and
+1. **Free variation selectors:** does the stored form keep them? They affect how letters display, and
    they are a known weak spot in `dots-and-circles`. This needs a rendering test and expert input.
-4. **Abkai `q` input:** how should users distinguish the two letters?
-5. **Manuscript known labels:** print is covered by Sun et al. (2026), but who transcribes the first
+2. **Abkai `q` input:** how should users distinguish the two letters?
+3. **Manuscript known labels:** print is covered by Sun et al. (2026), but who transcribes the first
    manuscript images, and can existing transcriptions be aligned to scans?
-6. **Hosting:** where do the app and database run in production?
+4. **Hosting:** where do the app and database run in production?
