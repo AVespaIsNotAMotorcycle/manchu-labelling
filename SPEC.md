@@ -56,6 +56,18 @@ owner has not yet approved. Everything else is agreed. Unresolved questions are 
 
 Segmentation is the biggest technical risk and gets an early trial (section 11).
 
+### Trial results
+
+On *Chao ben Man wen ce*, `pipeline/segment.py` produced 8,401 crops in Manchu columns, from 121 of the
+123 images. In one reviewer's visual check of a random 100 crops, 76 looked like one complete word, 20
+were clearly wrong, and 4 were an unclear short hook shape. This is an estimate, with a margin of about
+±8 points, and has not been checked by a Manchu reader.
+
+- 15 of the 20 failures were long strokes touching the next word or a Chinese column.
+- Removing diagonal strokes before grouping made results worse, because they are often part of letters.
+- Red editorial marks are ignored, and crops are cut from the original image.
+- Crops are rectangular, so parts of neighbouring words can appear in them.
+
 ## 4. Labels
 
 | Field | Values | Notes |
@@ -219,9 +231,9 @@ The owner is not intended to be the reviewer. Manjurists will be approached for 
 | Local development | Docker Compose | MongoDB, plus MinIO or a local folder in place of R2 |
 
 **Image storage:** files live in object storage and MongoDB stores only their keys. Keys are random, so
-they reveal nothing about an image. Assuming 100,000 crops at 30 KB and 5,000 pages at 1 MB, the total
-is about 8 GB. That fits R2's 10 GB-month free tier, and beyond it storage costs $0.015 per GB-month.
-Both sizes are estimates, to be replaced with real figures from the first volume.
+they reveal nothing about an image. The trial volume averaged 1.1 MB per page image and 9 KB per crop.
+At those sizes, 100,000 crops and 5,000 page images come to about 6.4 GB. That fits R2's 10 GB-month
+free tier, and beyond it storage costs $0.015 per GB-month.
 
 **Long-term dataset hosting** is separate from the app, on a DOI-issuing archive such as Zenodo or a
 dataset hub such as Hugging Face.
