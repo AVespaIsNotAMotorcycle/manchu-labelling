@@ -227,8 +227,8 @@ qualification for that script class and must pass the quiz again before labellin
 - If a dispute overturns a known label, the run of failures is recalculated, and qualification is
   restored if that label caused the loss.
 - The message to the user is general. It does not say which images were checks.
-- **[Proposed]** Qualification is lost after 5 failed checks in a row. A check fails below 80% character
-  accuracy, so that one slip in a long word does not count as doing poorly.
+- Qualification is lost after **5 failed checks in a row**. A check fails if any character is missing or
+  wrong, so only an exact match passes.
 
 ### Feedback and disputes
 
