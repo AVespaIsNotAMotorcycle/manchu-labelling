@@ -59,12 +59,18 @@ Segmentation is the biggest technical risk and gets an early trial (section 11).
 ### Trial results
 
 On *Chao ben Man wen ce*, `pipeline/segment.py` produced 8,401 crops in Manchu columns, from 121 of the
-123 images. In one reviewer's visual check of a random 100 crops, 76 looked like one complete word, 20
-were clearly wrong, and 4 were an unclear short hook shape. This is an estimate, with a margin of about
-±8 points, and has not been checked by a Manchu reader.
+123 images. In a visual check of a random 100 crops, 80 looked like one complete word and 20 were
+clearly wrong. This is an estimate, with a margin of about ±8 points, and the only input from a Manchu
+reader so far is the owner's identification of two shapes.
 
-- 15 of the 20 failures were long strokes touching the next word or a Chinese column.
-- Removing diagonal strokes before grouping made results worse, because they are often part of letters.
+- 15 of the 20 failures were long strokes touching the next word or a Chinese column. Many of these are
+  the long final slash of *be*.
+- The short hook shape is the separate word *i*, so those crops are valid.
+- Removing diagonal strokes before grouping did not help at any length tried. Short settings cut real
+  words apart, and long settings missed most slashes, which are curved and tapered.
+- Crops from Chinese columns (about 8,900 in this volume) stay out of the labelling queue. A sample
+  showed no Manchu among them. Some Chinese characters do reach the Manchu queue, and labelers mark
+  those as `chinese`.
 - Red editorial marks are ignored, and crops are cut from the original image.
 - Crops are rectangular, so parts of neighbouring words can appear in them.
 
