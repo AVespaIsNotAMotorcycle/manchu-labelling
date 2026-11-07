@@ -22,7 +22,7 @@ export async function pickNextImage(user: Types.ObjectId) {
   ]);
 
   const canonical = await WordInstance.distinct("canonicalCrop", {
-    retired: false,
+    retired: { $ne: true },
     _id: { $nin: underReview },
   });
   const excluded = new Set([...seen, ...finished.map(({ _id }) => _id)].map(String));

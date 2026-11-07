@@ -254,6 +254,13 @@ test("users can only see the context of images assigned to them", async () => {
   assert.equal(context.width, 100);
 });
 
+test("hands out words imported before the retired field existed", async () => {
+  await WordInstance.collection.updateMany({}, { $unset: { retired: "" } });
+  const client = await loggedIn("person@example.com");
+  const { image } = await (await client.request("/api/labelling/next")).json();
+  assert.equal(image.id, String(imageId));
+});
+
 test("a labelled image leaves the queue after two users", async () => {
   await Annotation.insertMany(
     ["a", "b"].map(() => ({

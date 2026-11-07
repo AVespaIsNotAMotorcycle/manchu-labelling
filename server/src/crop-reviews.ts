@@ -12,7 +12,7 @@ export async function instancesUnderReview(): Promise<Id[]> {
 /** Returns the word instances that a release may include. */
 export async function releasableInstances() {
   const blocked = await instancesUnderReview();
-  return WordInstance.find({ retired: false, _id: { $nin: blocked } }).lean();
+  return WordInstance.find({ retired: { $ne: true }, _id: { $nin: blocked } }).lean();
 }
 
 /**
