@@ -14,6 +14,7 @@ import { connectDatabase } from "../src/db.ts";
 import { CropReview, WordImage, WordInstance } from "../src/models/crops.ts";
 import { Annotation, Assignment, KnownLabel } from "../src/models/labels.ts";
 import { Page, Volume } from "../src/models/sources.ts";
+import { Qualification, TrainingAttempt, TrainingItem } from "../src/models/training.ts";
 import { User } from "../src/models/users.ts";
 import { hashPassword } from "../src/passwords.ts";
 
@@ -57,8 +58,9 @@ async function makeUser(email: string, overrides: object = {}) {
   });
 }
 
-async function loggedIn(email: string, overrides: object = {}) {
-  await makeUser(email, overrides);
+async function loggedIn(email: string, overrides: object = {}, qualified = true) {
+  const user = await makeUser(email, overrides);
+  if (qualified) await Qualification.create({ user: user._id, scriptClass: "regular" });
   const client = new Client();
   assert.equal((await client.login(email)).status, 200);
   return client;
@@ -187,6 +189,19 @@ test("blocks repeated login attempts", async (context) => {
   assert.equal((await attempt()).status, 429);
 });
 
+test("labelling needs training", async () => {
+  const client = await loggedIn("person@example.com", {}, false);
+  assert.equal((await client.request("/api/labelling/next")).status, 403);
+});
+
+test("users only see the script classes they qualified for", async () => {
+  const user = await makeUser("person@example.com");
+  await Qualification.create({ user: user._id, scriptClass: "running" });
+  const client = new Client();
+  await client.login("person@example.com");
+  assert.deepEqual(await (await client.request("/api/labelling/next")).json(), { image: null });
+});
+
 test("labelling needs a login and an accepted license", async () => {
   assert.equal((await new Client().request("/api/labelling/next")).status, 401);
 
@@ -287,6 +302,118 @@ test("the response is identical for an image with a known label", async () => {
   await KnownLabel.create({ wordImage: imageId, category: "manchu", origin: "test" });
   const withLabel = await loggedIn("second@example.com");
   assert.equal(await (await withLabel.request("/api/labelling/next")).text(), before);
+});
+
+async function makeBank(items: number) {
+  await TrainingItem.insertMany(
+    Array.from({ length: items }, (_, index) => ({
+      scriptClass: "regular",
+      kind: index % 2 === 0 ? "real" : "synthetic",
+      category: "manchu",
+      abkai: "manju",
+      manchu: "ᠮᠠᠨᠵᡠ",
+      imageKey: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}.png`,
+      source: "test",
+    })),
+  );
+}
+
+const answerQuiz = (client: Client, body: object) =>
+  client.request("/api/training/regular/answer", { method: "POST", body });
+
+test("a quiz image hides its answer until the user answers", async () => {
+  await makeBank(3);
+  const client = await loggedIn("person@example.com", {}, false);
+  const next = await (await client.request("/api/training/regular/next")).text();
+  assert.doesNotMatch(next, /manju|ᠮᠠᠨᠵᡠ|manchu|category/);
+
+  const result = await (await answerQuiz(client, { category: "manchu", transcription: "manju" })).json();
+  assert.equal(result.correct, true);
+  assert.equal(result.answer.abkai, "manju");
+  assert.equal(result.answer.mollendorff, "manju");
+});
+
+test("a reload gives the same quiz image, and it cannot be answered twice", async () => {
+  await makeBank(3);
+  const client = await loggedIn("person@example.com", {}, false);
+  const next = () => client.request("/api/training/regular/next").then((r) => r.json());
+  const first = await next();
+  assert.equal((await next()).item.id, first.item.id);
+
+  const body = { category: "bad_crop" };
+  assert.equal((await answerQuiz(client, body)).status, 200);
+  assert.equal((await answerQuiz(client, body)).status, 409);
+});
+
+test("marks the wrong word and the wrong category as incorrect", async () => {
+  await makeBank(3);
+  const client = await loggedIn("person@example.com", {}, false);
+  for (const body of [{ category: "manchu", transcription: "manjv" }, { category: "chinese" }]) {
+    await client.request("/api/training/regular/next");
+    assert.equal((await (await answerQuiz(client, body)).json()).correct, false);
+  }
+});
+
+test("rejects quiz answers that are not valid", async () => {
+  await makeBank(1);
+  const client = await loggedIn("person@example.com", {}, false);
+  await client.request("/api/training/regular/next");
+  for (const body of [{}, { category: "manchu" }, { category: "manchu", transcription: "1" }]) {
+    assert.equal((await answerQuiz(client, body)).status, 400);
+  }
+  assert.equal((await client.request("/api/training/unknown/next")).status, 404);
+});
+
+test("twenty correct answers qualify a user, and labelling opens", async () => {
+  await makeBank(40);
+  const client = await loggedIn("person@example.com", {}, false);
+  let progress;
+  for (let count = 1; count <= 20; count += 1) {
+    await client.request("/api/training/regular/next");
+    const result = await answerQuiz(client, { category: "manchu", transcription: "manju" });
+    ({ progress } = await result.json());
+    assert.equal(progress.correct, count);
+    assert.equal(progress.qualified, count === 20);
+  }
+  assert.ok(progress.real >= 10);
+  assert.equal((await client.request("/api/labelling/next")).status, 200);
+  assert.equal(await TrainingAttempt.countDocuments({ correct: false }), 0);
+});
+
+test("a wrong answer keeps a user from qualifying until it leaves the window", async () => {
+  await makeBank(60);
+  const client = await loggedIn("person@example.com", {}, false);
+  const answer = async (body: object) => {
+    await client.request("/api/training/regular/next");
+    return (await (await answerQuiz(client, body)).json()).progress;
+  };
+  await answer({ category: "chinese" });
+  for (let count = 0; count < 19; count += 1) {
+    await answer({ category: "manchu", transcription: "manju" });
+  }
+  assert.equal((await answer({ category: "manchu", transcription: "manju" })).qualified, true);
+});
+
+test("the image never repeats until the bank runs out", async () => {
+  await makeBank(10);
+  const client = await loggedIn("person@example.com", {}, false);
+  const seen = new Set();
+  for (let count = 0; count < 10; count += 1) {
+    const { item } = await (await client.request("/api/training/regular/next")).json();
+    seen.add(item.id);
+    await answerQuiz(client, { category: "bad_crop" });
+  }
+  assert.equal(seen.size, 10);
+  const { item } = await (await client.request("/api/training/regular/next")).json();
+  assert.ok(item);
+});
+
+test("reports which classes have quizzes", async () => {
+  await makeBank(1);
+  const client = await loggedIn("person@example.com", {}, false);
+  const status = await (await client.request("/api/training/status")).json();
+  assert.equal(status.classes[0].scriptClass, "regular");
+  assert.deepEqual(status.qualified, []);
 });
 
 test("images need a login and a well-formed key", async () => {

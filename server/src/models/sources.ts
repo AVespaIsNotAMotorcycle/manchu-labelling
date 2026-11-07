@@ -2,6 +2,11 @@ import { model, Schema, type InferSchemaType } from "mongoose";
 
 export const PRODUCTION_TYPES = ["woodblock", "movable_type", "manuscript", "other"] as const;
 export const SCRIPT_TYPES = ["regular", "running", "memorial", "seal", "other"] as const;
+export type ScriptClass = (typeof SCRIPT_TYPES)[number];
+
+export function isScriptClass(value: unknown): value is ScriptClass {
+  return (SCRIPT_TYPES as readonly unknown[]).includes(value);
+}
 
 const volumeSchema = new Schema(
   {

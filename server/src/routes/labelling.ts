@@ -1,12 +1,14 @@
-import { abkaiToManchu, CONVERTER_VERSION } from "@manchu-labelling/script";
+import { CONVERTER_VERSION } from "@manchu-labelling/script";
 import { Router, type Response } from "express";
 import { Types } from "mongoose";
 
 import { currentUser, requireLicense, requireUser } from "../auth.ts";
+import { parseText } from "../label-input.ts";
 import { WordImage } from "../models/crops.ts";
 import { Annotation, Assignment, CATEGORIES } from "../models/labels.ts";
 import { Page, Volume, PRODUCTION_TYPES, SCRIPT_TYPES } from "../models/sources.ts";
 import { pickNextImage } from "../queue.ts";
+import { qualifiedClasses } from "../training.ts";
 
 export const labellingRouter = Router();
 labellingRouter.use(requireUser, requireLicense);
@@ -40,8 +42,13 @@ async function findAssignment(user: Types.ObjectId, wordImage: string, response:
 
 labellingRouter.get("/next", async (_request, response) => {
   const user = currentUser(response)._id;
+  const scriptClasses = await qualifiedClasses(user);
+  if (scriptClasses.length === 0) {
+    response.status(403).json({ error: "Please complete training first" });
+    return;
+  }
   const open = await Assignment.findOne({ user, submittedAt: null });
-  const wordImage = open?.wordImage ?? (await pickNextImage(user));
+  const wordImage = open?.wordImage ?? (await pickNextImage(user, scriptClasses));
   if (!wordImage) {
     response.json({ image: null });
     return;
@@ -62,14 +69,6 @@ labellingRouter.get("/:id/context", async (request, response) => {
     box: image.box,
   });
 });
-
-/** Stored text is always worked out here, so that a client cannot submit Manchu that it did not type. */
-function parseText(abkai: unknown): { abkai: string; manchu: string } | null | "invalid" {
-  if (abkai === undefined || abkai === null || abkai === "") return null;
-  if (typeof abkai !== "string") return "invalid";
-  const { text, invalid } = abkaiToManchu(abkai);
-  return invalid.length > 0 || text === "" ? "invalid" : { abkai, manchu: text };
-}
 
 const isOneOf = (values: readonly string[], value: unknown): boolean =>
   value === undefined || (typeof value === "string" && values.includes(value));

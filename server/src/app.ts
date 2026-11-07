@@ -5,10 +5,11 @@ import { requireUser } from "./auth.ts";
 import { adminRouter } from "./routes/admin.ts";
 import { createAuthRouter } from "./routes/auth.ts";
 import { labellingRouter } from "./routes/labelling.ts";
+import { trainingRouter } from "./routes/training.ts";
 
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const DEFAULT_LOGIN_ATTEMPTS = 10;
-const IMAGE_KEY = /^[0-9a-f-]{36}\.jpg$/;
+const IMAGE_KEY = /^[0-9a-f-]{36}\.(jpg|png)$/;
 
 export interface AppOptions {
   sessionSecret: string;
@@ -45,6 +46,7 @@ export function createApp(options: AppOptions): express.Express {
   });
   app.use("/api/auth", createAuthRouter(options.loginAttempts ?? DEFAULT_LOGIN_ATTEMPTS));
   app.use("/api/labelling", labellingRouter);
+  app.use("/api/training", trainingRouter);
   app.use("/api/admin", adminRouter);
 
   app.get("/api/images/:key", requireUser, (request, response) => {

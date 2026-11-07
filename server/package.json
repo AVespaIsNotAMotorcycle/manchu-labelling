@@ -8,7 +8,8 @@
     "start": "node src/index.ts",
     "test": "node --test test/*.test.ts",
     "import-segments": "node src/scripts/import-segments.ts",
-    "create-user": "node src/scripts/create-user.ts"
+    "create-user": "node src/scripts/create-user.ts",
+    "import-training": "node src/scripts/import-training.ts"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

@@ -14,6 +14,8 @@ export const CATEGORIES = [
   "bad_crop",
 ] as const;
 
+export type Category = (typeof CATEGORIES)[number];
+
 const CONFIDENCE = ["confident", "unconfident"] as const;
 
 const hasValue = (text: string | undefined | null): text is string => Boolean(text);
