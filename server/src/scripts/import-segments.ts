@@ -16,7 +16,7 @@ import { parseArgs } from "node:util";
 import mongoose, { Types } from "mongoose";
 
 import { connectDatabase } from "../db.ts";
-import { compareCrops, type Box } from "../instances.ts";
+import { matchCrop, type Box } from "../instances.ts";
 import { SegmentationRun, WordImage, WordInstance } from "../models/crops.ts";
 import { Page, Volume, PRODUCTION_TYPES, SCRIPT_TYPES } from "../models/sources.ts";
 
@@ -129,11 +129,10 @@ async function main(): Promise<void> {
     const box = toBox(word.box);
 
     const earlierCrops = await WordImage.find({ page, run: { $ne: run._id } }, "box instance").lean();
-    const relations = earlierCrops.map((crop) => ({ crop, relation: compareCrops(box, crop.box) }));
-    const same = relations.find(({ relation }) => relation === "same");
-    if (relations.some(({ relation }) => relation === "conflict")) conflicts += 1;
+    const match = matchCrop(box, earlierCrops);
+    if (match.conflict) conflicts += 1;
 
-    const instanceId = same ? same.crop.instance : new Types.ObjectId();
+    const instanceId = match.instance ?? new Types.ObjectId();
     const crop = await WordImage.create({
       run: run._id,
       page,
@@ -146,7 +145,7 @@ async function main(): Promise<void> {
       imageKey: await store(join(volumeDirectory, "segments/crops", word.file), storage),
     });
 
-    if (same) reused += 1;
+    if (match.instance) reused += 1;
     else await WordInstance.create({ _id: instanceId, page, canonicalCrop: crop._id });
   }
 

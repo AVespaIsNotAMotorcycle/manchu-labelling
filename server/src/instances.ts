@@ -30,3 +30,22 @@ export function compareCrops(a: Box, b: Box): "same" | "conflict" | "separate" {
   if (intersection / Math.min(areaA, areaB) >= CONFLICT_OVERLAP) return "conflict";
   return "separate";
 }
+
+export interface EarlierCrop<Instance> {
+  box: Box;
+  instance: Instance;
+}
+
+/**
+ * Decides how a new crop relates to crops from earlier runs. A crop that matches a word has no conflict,
+ * even if it also overlaps a neighbour, because small words often sit inside a neighbour's rectangle.
+ */
+export function matchCrop<Instance>(
+  box: Box,
+  earlierCrops: readonly EarlierCrop<Instance>[],
+): { instance?: Instance; conflict: boolean } {
+  const relations = earlierCrops.map((crop) => ({ crop, relation: compareCrops(box, crop.box) }));
+  const same = relations.find(({ relation }) => relation === "same");
+  if (same) return { instance: same.crop.instance, conflict: false };
+  return { conflict: relations.some(({ relation }) => relation === "conflict") };
+}

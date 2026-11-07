@@ -105,7 +105,7 @@ Manjurists.
   shape of a letter the page used.
 - The preview uses Noto Sans Mongolian. Without selectors, 19 of 121 dictionary words displayed
   differently in a browser test. Most differences are slight, but the standalone word *i* shows its normal
-  form instead of the hook used on the page. This only affects the preview.
+  form, so the preview adds a selector for display only when the whole word is ᡳ.
 
 ## 5. Labelling workflow
 
@@ -256,13 +256,33 @@ dataset hub such as Hugging Face.
 | --- | --- |
 | `volumes` | Source metadata, rights, attribution, default style |
 | `pages` | Source link, image key, dimensions |
-| `wordImages` | Page, bounding box, reading order, image key, status |
-| `annotations` | Append-only labels with user, timestamps, and confidence |
-| `knownLabels` | Answers, their origin, and their state (active, retired, corrected) |
+| `segmentationRuns` | One record per segmentation import, with the pipeline commit |
+| `wordInstances` | One physical word on a page, and the one crop to use for it |
+| `wordImages` | Crops: run, page, word instance, bounding box, reading order, image key |
+| `annotations` | Append-only labels with user, timestamps, confidence, typed Abkai, and converter version |
+| `assignments` | Which user was given which image, with no sign of whether it is a check |
+| `knownLabels` | Answers, their origin, and their state (active, retired, corrected). The only record of which images are checks |
 | `trainingAttempts` | Quiz answers and qualification by script class |
 | `disputes` | Disputed test images and their outcomes |
 | `users` | Account, role, license agreement, credit preference |
 | `releases` | Version, parameters used, DOI |
+
+### Data rules
+
+- **Crops never change.** Each records its segmentation run. New segmentation adds new crops, so a label
+  always matches its image.
+- **Each word is published once.** Crops of the same word share a word instance, which names one
+  canonical crop. Exports read word instances, so a second crop of a word cannot be published.
+- **Crops are matched across runs by overlap.** Crops with an intersection-over-union of at least 0.6
+  are the same word. If a new crop has at least half its area inside an earlier crop without matching
+  any word, it is reported as a conflict, such as a merged crop and a word inside it.
+- **[Proposed]** The first crop of a word stays canonical until a reviewer changes it, or until its
+  final label is `bad_crop` and another crop exists. A release fails if any unresolved conflict remains
+  between canonical crops.
+- **Corrections are new annotations** that point to the one they replace.
+- **Trust is never stored on labels.** It is calculated from the history.
+- **Split crops** (planned) become new crops with their own word instances, linked to the parent.
+  Labels on the parent stay as they are.
 
 ## 11. Milestones
 

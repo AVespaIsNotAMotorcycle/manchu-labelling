@@ -6,7 +6,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose, { Types } from "mongoose";
 
 import { connectDatabase } from "../src/db.ts";
-import { compareCrops } from "../src/instances.ts";
+import { compareCrops, matchCrop } from "../src/instances.ts";
 import { Annotation, Assignment, KnownLabel } from "../src/models/labels.ts";
 import { WordImage } from "../src/models/crops.ts";
 
@@ -121,4 +121,14 @@ test("compares crops from different runs", () => {
 
   const mergedTwoWords = { x: 100, y: 100, width: 50, height: 420 };
   assert.equal(compareCrops(word, mergedTwoWords), "conflict");
+});
+
+test("a crop matching a word has no conflict, even inside a neighbour", () => {
+  const hook = { x: 100, y: 100, width: 20, height: 20 };
+  const neighbour = { box: { x: 90, y: 90, width: 60, height: 200 }, instance: "neighbour" };
+  const sameWord = { box: { x: 100, y: 100, width: 20, height: 21 }, instance: "hook" };
+
+  assert.deepEqual(matchCrop(hook, [neighbour, sameWord]), { instance: "hook", conflict: false });
+  assert.deepEqual(matchCrop(hook, [neighbour]), { conflict: true });
+  assert.deepEqual(matchCrop(hook, []), { conflict: false });
 });
