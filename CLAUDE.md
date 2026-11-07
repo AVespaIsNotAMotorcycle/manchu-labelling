@@ -11,9 +11,28 @@ and reproducibility.
 it up to date when a decision changes. Items marked **[Proposed]** are not yet approved, so check with
 the owner before relying on them.
 
-## Status
+## Commands
 
-Pre-implementation: there is no code yet. Update this file when build, test, and run commands exist.
+```sh
+npm install                  # install all workspaces
+npm test                     # run all tests
+npm run typecheck            # typecheck packages and server
+npm run build -w client      # typecheck and build the client
+npm run dev -w server        # API on port 3001
+npm run dev -w client        # client, proxying /api to the server
+
+python3 -m venv .venv && .venv/bin/pip install -r pipeline/requirements.txt
+.venv/bin/python pipeline/fetch_volume.py 10499177    # download a Harvard volume to data/
+.venv/bin/python pipeline/segment.py 10499177         # segment it into word crops
+```
+
+## Layout
+
+- `packages/script`: conversion between Manchu Unicode, Abkai, and Möllendorff, shared by client and server
+- `server`: Express API, written in TypeScript and run directly by Node
+- `client`: React app built with Vite
+- `pipeline`: offline Python jobs for fetching and segmenting scans
+- `data`: downloaded scans and generated crops, not in git
 
 ## Working agreements
 
@@ -30,4 +49,4 @@ Pre-implementation: there is no code yet. Update this file when build, test, and
   as those for ordinary images, and the client must not receive answers.
 - **Never delete or overwrite labels.** Annotations are append-only, and trust is computed at export.
 - **Transcriptions record what is written,** not the intended word.
-- **Manchu Unicode is the stored form.** Abkai is only an input method.
+- **Manchu Unicode is the stored form, without variation selectors.** Abkai is only an input method.

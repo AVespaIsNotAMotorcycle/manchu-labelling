@@ -98,8 +98,14 @@ Manjurists.
 
 - Manchu Unicode is the stored form. Abkai is only an input method. Exports include Manchu Unicode,
   Abkai, and Möllendorff.
-- Abkai `q` covers two letters, so the input needs a way to tell them apart.
-- Handling of free variation selectors is an open question (section 12).
+- Abkai `q` always means ᠴ. ᡱ is entered through the sequence `qyʻ`, which gives ᡱᡳ. It is not known
+  whether ᡱ appears outside that sequence.
+- `'` is accepted in place of the Abkai `ʻ` when typing.
+- **Free variation selectors are not stored**, at least for now. A label records letters, not which
+  shape of a letter the page used.
+- The preview uses Noto Sans Mongolian. Without selectors, 19 of 121 dictionary words displayed
+  differently in a browser test. Most differences are slight, but the standalone word *i* shows its normal
+  form instead of the hook used on the page. This only affects the preview.
 
 ## 5. Labelling workflow
 
@@ -275,9 +281,6 @@ Each milestone ends with a check-in.
 
 ## 12. Open questions
 
-1. **Free variation selectors:** does the stored form keep them? They affect how letters display, and
-   they are a known weak spot in `dots-and-circles`. This needs a rendering test and expert input.
-2. **Abkai `q` input:** how should users distinguish the two letters?
-3. **Manuscript known labels:** print is covered by Sun et al. (2026), but who transcribes the first
+1. **Manuscript known labels:** print is covered by Sun et al. (2026), but who transcribes the first
    manuscript images, and can existing transcriptions be aligned to scans?
-4. **Hosting:** where do the app and database run in production?
+2. **Hosting:** where do the app and database run in production?
