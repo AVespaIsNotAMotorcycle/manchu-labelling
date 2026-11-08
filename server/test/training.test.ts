@@ -33,6 +33,11 @@ test("only the most recent answers count", () => {
   assert.equal(summarizeWindow(recent).passes, true);
 });
 
+test("reports each answer in the window, oldest first", () => {
+  const newestFirst = [...answers(1, 0), ...answers(1, 0, false), ...answers(2, 0)];
+  assert.deepEqual(summarizeWindow(newestFirst).recent, [true, true, false, true]);
+});
+
 test("converts the dataset's spelling to Abkai", () => {
   assert.equal(datasetWordToAbkai("cooha"), "qooha");
   assert.equal(datasetWordToAbkai("xun"), "xun");

@@ -19,6 +19,8 @@ export interface Progress {
   answered: number;
   correct: number;
   real: number;
+  /** Whether each answer in the window was correct, oldest first. */
+  recent: boolean[];
   windowSize: number;
   minReal: number;
   qualified: boolean;
@@ -38,6 +40,7 @@ export function summarizeWindow(recent: readonly Recent[]): Omit<Progress, "qual
     answered: window.length,
     correct,
     real,
+    recent: window.map((attempt) => attempt.correct).reverse(),
     windowSize: WINDOW_SIZE,
     minReal: MIN_REAL_IN_WINDOW,
     passes: correct === WINDOW_SIZE && real >= MIN_REAL_IN_WINDOW,

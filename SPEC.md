@@ -161,6 +161,8 @@ Users complete this section before they can do real work:
   otherwise reach 10, so synthetic images appear from the start.
 - Images do not repeat until a user has answered them all, and reloading cannot skip an image.
 - Quiz images are a separate collection from hidden checks and are never used as checks.
+- The quiz shows whether each of the last 20 answers was right, in order, and how many more correct
+  answers in a row the user needs.
 
 ### The `regular` bank
 

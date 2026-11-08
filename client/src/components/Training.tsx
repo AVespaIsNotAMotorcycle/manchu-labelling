@@ -43,17 +43,38 @@ function Introduction({ onStart }: { onStart: () => void }) {
   );
 }
 
+function AnswerMark({ correct }: { correct: boolean | undefined }) {
+  if (correct === undefined) return <li className="mark" aria-label="Not answered yet" />;
+  return (
+    <li className={correct ? "mark right" : "mark wrong"}>
+      <svg viewBox="0 0 16 16" role="img" aria-label={correct ? "Correct" : "Wrong"}>
+        <path d={correct ? "M3 8.5 6.5 12 13 4.5" : "M4 4 12 12M12 4 4 12"} />
+      </svg>
+    </li>
+  );
+}
+
 function ProgressMeter({ progress }: { progress: QuizProgress }) {
-  const { answered, correct, real, windowSize, minReal } = progress;
+  const { recent, real, windowSize, minReal } = progress;
+  // The answers after the last wrong one, or all of them if none were wrong.
+  const streak = recent.length - 1 - recent.lastIndexOf(false);
+  const needed = windowSize - streak;
+  const slots = Array.from({ length: windowSize }, (_, index) => recent[index]);
   return (
     <div className="progress">
       <p>
         <strong>
-          {correct} of your last {answered} correct
+          {needed === 0
+            ? `${windowSize} correct in a row`
+            : `${needed} more correct in a row to qualify`}
         </strong>{" "}
-        · You need {windowSize} of {windowSize}, with at least {minReal} real scans ({real} so far)
+        · At least {minReal} of the {windowSize} must be real scans ({real} so far)
       </p>
-      <progress max={windowSize} value={correct} aria-label="Correct answers in your last 20" />
+      <ol className="marks" aria-label={`Your last ${windowSize} answers, oldest first`}>
+        {slots.map((correct, index) => (
+          <AnswerMark key={index} correct={correct} />
+        ))}
+      </ol>
     </div>
   );
 }

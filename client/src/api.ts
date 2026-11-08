@@ -30,6 +30,8 @@ export interface QuizProgress {
   answered: number;
   correct: number;
   real: number;
+  /** Whether each answer in the window was correct, oldest first. */
+  recent: boolean[];
   windowSize: number;
   minReal: number;
   qualified: boolean;
