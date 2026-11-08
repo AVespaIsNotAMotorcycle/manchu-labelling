@@ -114,12 +114,6 @@ button.link:focus:enabled {
   padding: 0.25rem;
 }
 
-.resources {
-  margin: 0 0 0.75rem;
-  padding-left: 1.1rem;
-  font-size: 0.9rem;
-}
-
 .card {
   display: grid;
   gap: 1rem;
@@ -248,18 +242,30 @@ dd {
   overflow-wrap: anywhere;
 }
 
+/* The middle column is the gutter that holds the handle for resizing the letter forms. */
 .workspace {
+  --reference-default-width: 19rem;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 19rem;
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) 1rem auto;
   padding: 1rem;
 }
 
 /* The letter forms take two columns of letters once the form still fits beside them. */
 @media (min-width: 100rem) {
   .workspace {
-    grid-template-columns: minmax(0, 1fr) 38rem;
+    --reference-default-width: 38rem;
   }
+}
+
+/* Wider still, and the links fit beside those two columns as well. */
+@media (min-width: 103rem) {
+  .workspace {
+    --reference-default-width: 46.5rem;
+  }
+}
+
+.work {
+  container: work / inline-size;
 }
 
 .labelling {
@@ -423,7 +429,42 @@ legend {
   pointer-events: none;
 }
 
+.reference-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: calc(100vh - 5rem);
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.reference-handle::before {
+  content: "";
+  width: 4px;
+  height: 3rem;
+  border-radius: var(--radius);
+  background: var(--line);
+  transition: background-color 0.2s;
+}
+
+.reference-handle:hover::before,
+.reference-handle:focus-visible::before {
+  background: var(--text);
+}
+
+.reference-handle:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+  border-radius: var(--radius);
+}
+
+/* The minimum and the space kept for the work match the limits in Reference.tsx. */
 .reference {
+  container: reference / inline-size;
+  width: var(--reference-width, var(--reference-default-width));
+  min-width: 19rem;
+  max-width: max(19rem, calc(100vw - 24rem));
   max-height: calc(100vh - 5rem);
   overflow-y: auto;
   padding: 1rem;
@@ -436,9 +477,32 @@ legend {
   font-size: 1.1rem;
 }
 
-/* One table flowing through two equal columns wherever both fit. */
+.reference-contents {
+  display: grid;
+  gap: 0.75rem 1rem;
+}
+
+.resources {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.9rem;
+}
+
+/* The links move beside the table once it keeps two columns of letters without their room. */
+@container reference (min-width: 43rem) {
+  .reference-contents {
+    grid-template-columns: minmax(0, 1fr) 10rem;
+  }
+
+  .resources {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+/* One table flowing through as many equal columns as fit. */
 .letter-columns {
-  columns: 2 16rem;
+  columns: 15.5rem;
   column-gap: 1rem;
 }
 
@@ -466,7 +530,8 @@ legend {
   font-size: 2.5rem;
 }
 
-@media (max-width: 75rem) {
+/* This depends on the room left by the letter forms, which the user can resize. */
+@container work (max-width: 53rem) {
   .labelling {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -479,9 +544,17 @@ legend {
 @media (max-width: 60rem) {
   .workspace {
     grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .reference-handle {
+    display: none;
   }
 
   .reference {
+    width: auto;
+    min-width: 0;
+    max-width: none;
     max-height: none;
   }
 }
