@@ -7,7 +7,6 @@ import { CategoryField } from "./CategoryField.tsx";
 import { CropImage } from "./CropImage.tsx";
 import { ManchuText } from "./ManchuText.tsx";
 import { PageView } from "./PageView.tsx";
-import { Reference } from "./Reference.tsx";
 
 const PRODUCTION = [
   ["manuscript", "Manuscript"],
@@ -187,14 +186,11 @@ export function Labelling() {
   useEffect(loadNext, []);
 
   return (
-    <div className="workspace">
-      <main>
-        {error && <p role="alert">{error}</p>}
-        {image === undefined && !error && <p className="status">Loading…</p>}
-        {image === null && <p className="status">There are no more images to label. Thank you!</p>}
-        {image && <LabelForm key={image.id} image={image} onDone={loadNext} />}
-      </main>
-      <Reference />
-    </div>
+    <main>
+      {error && <p role="alert">{error}</p>}
+      {image === undefined && !error && <p className="status">Loading…</p>}
+      {image === null && <p className="status">There are no more images to label. Thank you!</p>}
+      {image && <LabelForm key={image.id} image={image} onDone={loadNext} />}
+    </main>
   );
 }

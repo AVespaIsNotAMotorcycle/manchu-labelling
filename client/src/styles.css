@@ -139,7 +139,7 @@ button.link:focus:enabled {
 /* Buttons joined into one switch, with one pressed. */
 .tabs {
   display: flex;
-  padding: 1rem 1rem 0;
+  margin-bottom: 1rem;
 }
 
 .tabs button {

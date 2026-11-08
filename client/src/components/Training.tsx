@@ -12,7 +12,6 @@ import { AbkaiField } from "./AbkaiField.tsx";
 import { categoryName, CategoryField } from "./CategoryField.tsx";
 import { CropImage } from "./CropImage.tsx";
 import { ManchuText } from "./ManchuText.tsx";
-import { Reference } from "./Reference.tsx";
 
 function Introduction({ onStart }: { onStart: () => void }) {
   return (
@@ -223,39 +222,36 @@ export function Training(props: { scriptClass: string; onQualified: () => void }
   const isNew = progress?.answered === 0;
 
   return (
-    <div className="workspace">
-      <main>
-        {error && <p role="alert">{error}</p>}
-        {progress && isNew && !started ? (
-          <Introduction onStart={() => setStarted(true)} />
-        ) : (
-          <>
-            {progress && (
-              <ProgressMeter progress={answered?.result.progress ?? progress} />
-            )}
-            {item === undefined && !error && <p className="status">Loading…</p>}
-            {item === null && <p className="status">There are no quiz images yet.</p>}
-            {item && answered && (
-              <Feedback
-                item={item}
-                given={answered.given}
-                result={answered.result}
-                onNext={loadNext}
-                onFinish={onQualified}
-              />
-            )}
-            {item && !answered && (
-              <Question
-                key={item.id}
-                item={item}
-                scriptClass={scriptClass}
-                onAnswered={(given, result) => setAnswered({ given, result })}
-              />
-            )}
-          </>
-        )}
-      </main>
-      <Reference />
-    </div>
+    <main>
+      {error && <p role="alert">{error}</p>}
+      {progress && isNew && !started ? (
+        <Introduction onStart={() => setStarted(true)} />
+      ) : (
+        <>
+          {progress && (
+            <ProgressMeter progress={answered?.result.progress ?? progress} />
+          )}
+          {item === undefined && !error && <p className="status">Loading…</p>}
+          {item === null && <p className="status">There are no quiz images yet.</p>}
+          {item && answered && (
+            <Feedback
+              item={item}
+              given={answered.given}
+              result={answered.result}
+              onNext={loadNext}
+              onFinish={onQualified}
+            />
+          )}
+          {item && !answered && (
+            <Question
+              key={item.id}
+              item={item}
+              scriptClass={scriptClass}
+              onAnswered={(given, result) => setAnswered({ given, result })}
+            />
+          )}
+        </>
+      )}
+    </main>
   );
 }

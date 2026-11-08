@@ -12,6 +12,7 @@ import { FontPicker } from "./components/FontPicker.tsx";
 import { Labelling } from "./components/Labelling.tsx";
 import { LicensePrompt } from "./components/LicensePrompt.tsx";
 import { Login } from "./components/Login.tsx";
+import { Reference } from "./components/Reference.tsx";
 import { Training } from "./components/Training.tsx";
 
 function Workspace(props: {
@@ -26,29 +27,32 @@ function Workspace(props: {
   const scriptClass = status.classes[0]?.scriptClass;
 
   return (
-    <>
-      <nav className="tabs" aria-label="Work">
-        <button
-          type="button"
-          aria-current={view === "label"}
-          disabled={!canLabel}
-          title={canLabel ? undefined : "Complete training to start labelling"}
-          onClick={() => onViewChange("label")}
-        >
-          Label
-        </button>
-        <button type="button" aria-current={view === "train"} onClick={() => onViewChange("train")}>
-          Training
-        </button>
-      </nav>
-      {view === "label" && <Labelling />}
-      {view === "train" &&
-        (scriptClass ? (
-          <Training scriptClass={scriptClass} onQualified={onQualified} />
-        ) : (
-          <p className="status">There are no quizzes yet.</p>
-        ))}
-    </>
+    <div className="workspace">
+      <div className="work">
+        <nav className="tabs" aria-label="Work">
+          <button
+            type="button"
+            aria-current={view === "label"}
+            disabled={!canLabel}
+            title={canLabel ? undefined : "Complete training to start labelling"}
+            onClick={() => onViewChange("label")}
+          >
+            Label
+          </button>
+          <button type="button" aria-current={view === "train"} onClick={() => onViewChange("train")}>
+            Training
+          </button>
+        </nav>
+        {view === "label" && <Labelling />}
+        {view === "train" &&
+          (scriptClass ? (
+            <Training scriptClass={scriptClass} onQualified={onQualified} />
+          ) : (
+            <p className="status">There are no quizzes yet.</p>
+          ))}
+      </div>
+      <Reference />
+    </div>
   );
 }
 
