@@ -364,46 +364,79 @@ test("rejects quiz answers that are not valid", async () => {
   assert.equal((await client.request("/api/training/unknown/next")).status, 404);
 });
 
-test("twenty correct answers qualify a user, and labelling opens", async () => {
-  await makeBank(40);
-  const client = await loggedIn("person@example.com", {}, false);
-  let progress;
-  for (let count = 1; count <= 20; count += 1) {
-    await client.request("/api/training/regular/next");
-    const result = await answerQuiz(client, { category: "manchu", transcription: "manju" });
-    ({ progress } = await result.json());
-    assert.equal(progress.correct, count);
-    assert.equal(progress.qualified, count === 20);
-  }
-  assert.ok(progress.real >= 10);
-  assert.equal((await client.request("/api/labelling/next")).status, 200);
-  assert.equal(await TrainingAttempt.countDocuments({ correct: false }), 0);
-});
+const RIGHT = { category: "manchu", transcription: "manju" };
+const WRONG = { category: "chinese" };
 
-test("a wrong answer keeps a user from qualifying until it leaves the window", async () => {
+/** Answers the waiting image in the quiz or in practice, and returns the result. */
+async function answerNext(client: Client, body: object, path = "") {
+  await client.request(`/api/training/regular${path}/next`);
+  const response = await client.request(`/api/training/regular${path}/answer`, { method: "POST", body });
+  return response.json();
+}
+
+test("ten generated images and then fifteen real scans qualify a user", async () => {
   await makeBank(60);
   const client = await loggedIn("person@example.com", {}, false);
-  const answer = async (body: object) => {
-    await client.request("/api/training/regular/next");
-    return (await (await answerQuiz(client, body)).json()).progress;
-  };
-  await answer({ category: "chinese" });
-  for (let count = 0; count < 19; count += 1) {
-    await answer({ category: "manchu", transcription: "manju" });
+  for (let count = 1; count <= 10; count += 1) {
+    const { progress } = await answerNext(client, RIGHT);
+    assert.equal(progress.synthetic.passed, count === 10);
   }
-  assert.equal((await answer({ category: "manchu", transcription: "manju" })).qualified, true);
+  for (let count = 1; count <= 15; count += 1) {
+    const { progress } = await answerNext(client, RIGHT);
+    assert.equal(progress.real.needed, 15 - count);
+    assert.equal(progress.qualified, count === 15);
+  }
+  const kinds = (await TrainingAttempt.find().sort({ createdAt: 1, _id: 1 })).map(({ kind }) => kind);
+  assert.deepEqual(kinds, [...Array(10).fill("synthetic"), ...Array(15).fill("real")]);
+  assert.equal((await client.request("/api/labelling/next")).status, 200);
+});
+
+test("a wrong real scan restarts the second stage but not the first", async () => {
+  await makeBank(80);
+  const client = await loggedIn("person@example.com", {}, false);
+  for (let count = 0; count < 10; count += 1) await answerNext(client, RIGHT);
+  const { progress } = await answerNext(client, WRONG);
+  assert.equal(progress.synthetic.passed, true);
+  assert.equal(progress.real.needed, 15);
+  for (let count = 0; count < 14; count += 1) await answerNext(client, RIGHT);
+  assert.equal((await answerNext(client, RIGHT)).progress.qualified, true);
+});
+
+test("practice opens after the first stage and does not affect progress", async () => {
+  await makeBank(60);
+  const client = await loggedIn("person@example.com", {}, false);
+  assert.equal((await client.request("/api/training/regular/practice/next")).status, 409);
+  for (let count = 0; count < 10; count += 1) await answerNext(client, RIGHT);
+  await answerNext(client, RIGHT);
+
+  const { progress } = await answerNext(client, WRONG, "/practice");
+  assert.equal(progress.synthetic.passed, true);
+  assert.equal(progress.real.needed, 14);
+  const last = await TrainingAttempt.findOne().sort({ createdAt: -1, _id: -1 });
+  assert.equal(last?.kind, "synthetic");
+});
+
+test("practice cannot be used to skip a quiz image", async () => {
+  await makeBank(60);
+  const client = await loggedIn("person@example.com", {}, false);
+  for (let count = 0; count < 10; count += 1) await answerNext(client, RIGHT);
+  const next = (path = "") => client.request(`/api/training/regular${path}/next`).then((r) => r.json());
+  const waiting = (await next()).item.id;
+  await answerNext(client, RIGHT, "/practice");
+  assert.equal((await next()).item.id, waiting);
 });
 
 test("the image never repeats until the bank runs out", async () => {
   await makeBank(10);
   const client = await loggedIn("person@example.com", {}, false);
   const seen = new Set();
-  for (let count = 0; count < 10; count += 1) {
+  // Half of the bank is generated images, which are all the first stage uses.
+  for (let count = 0; count < 5; count += 1) {
     const { item } = await (await client.request("/api/training/regular/next")).json();
     seen.add(item.id);
     await answerQuiz(client, { category: "bad_crop" });
   }
-  assert.equal(seen.size, 10);
+  assert.equal(seen.size, 5);
   const { item } = await (await client.request("/api/training/regular/next")).json();
   assert.ok(item);
 });

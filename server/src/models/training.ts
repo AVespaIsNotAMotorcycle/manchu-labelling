@@ -36,11 +36,13 @@ const trainingAttemptSchema = new Schema({
 trainingAttemptSchema.index({ user: 1, scriptClass: 1, createdAt: -1 });
 trainingAttemptSchema.plugin(appendOnly);
 
-/** The image a user must answer next, so that reloading cannot skip a hard one. */
+/** The images a user must answer next, so that reloading cannot skip a hard one. */
 const trainingStateSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: "User", required: true },
   scriptClass: { type: String, enum: SCRIPT_TYPES, required: true },
   currentItem: { type: Schema.Types.ObjectId, ref: "TrainingItem" },
+  /** Practice on generated images keeps its own image, so that it cannot be used to skip a quiz image. */
+  practiceItem: { type: Schema.Types.ObjectId, ref: "TrainingItem" },
 });
 trainingStateSchema.index({ user: 1, scriptClass: 1 }, { unique: true });
 

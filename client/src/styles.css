@@ -183,6 +183,10 @@ button.link:focus:enabled {
   margin: 0 0 0.25rem;
 }
 
+.progress button {
+  margin-top: 0.5rem;
+}
+
 /* One row at any width: the marks shrink rather than wrap, so the order stays easy to read. */
 .marks {
   display: flex;

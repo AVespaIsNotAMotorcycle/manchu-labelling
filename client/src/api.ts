@@ -26,14 +26,17 @@ export interface Label {
   confidence: { category: string; transcription: string; style: string };
 }
 
+export interface QuizStage {
+  /** Whether each of the latest answers in this stage was correct, oldest first. */
+  recent: boolean[];
+  length: number;
+  needed: number;
+}
+
 export interface QuizProgress {
   answered: number;
-  correct: number;
-  real: number;
-  /** Whether each answer in the window was correct, oldest first. */
-  recent: boolean[];
-  windowSize: number;
-  minReal: number;
+  synthetic: QuizStage & { passed: boolean };
+  real: QuizStage;
   qualified: boolean;
 }
 
@@ -73,13 +76,16 @@ export const logIn = (email: string, password: string) =>
 export const logOut = () => request<void>("/api/auth/logout", { method: "POST" });
 export const acceptLicense = () => request<Account>("/api/auth/accept-license", { method: "POST" });
 export const getTrainingStatus = () => request<TrainingStatus>("/api/training/status");
-export const getQuizItem = (scriptClass: string) =>
-  request<{ item: QuizItem | null; progress: QuizProgress }>(`/api/training/${scriptClass}/next`);
+const quizPath = (scriptClass: string, practice: boolean) =>
+  `/api/training/${scriptClass}${practice ? "/practice" : ""}`;
+export const getQuizItem = (scriptClass: string, practice = false) =>
+  request<{ item: QuizItem | null; progress: QuizProgress }>(`${quizPath(scriptClass, practice)}/next`);
 export const answerQuiz = (
   scriptClass: string,
   answer: { category: string; transcription?: string },
+  practice = false,
 ) =>
-  request<QuizFeedback>(`/api/training/${scriptClass}/answer`, { method: "POST", body: answer });
+  request<QuizFeedback>(`${quizPath(scriptClass, practice)}/answer`, { method: "POST", body: answer });
 export const getNextImage = () => request<{ image: LabelImage | null }>("/api/labelling/next");
 export const getContext = (id: string) => request<PageContext>(`/api/labelling/${id}/context`);
 export const submitLabel = (id: string, label: Label) =>

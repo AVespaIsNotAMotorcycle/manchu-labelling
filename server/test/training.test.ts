@@ -2,40 +2,74 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { datasetWordToAbkai } from "../src/scripts/import-training.ts";
-import { MIN_REAL_IN_WINDOW, summarizeWindow, WINDOW_SIZE } from "../src/training.ts";
+import { REAL_STREAK, summarizeAnswers, SYNTHETIC_STREAK } from "../src/training.ts";
 
-const answers = (real: number, synthetic: number, correct = true) => [
-  ...Array.from({ length: real }, () => ({ correct, kind: "real" })),
-  ...Array.from({ length: synthetic }, () => ({ correct, kind: "synthetic" })),
-];
+/** Answers of one kind, oldest first. */
+const answers = (kind: string, count: number, correct = true) =>
+  Array.from({ length: count }, () => ({ correct, kind }));
+const passFirstStage = () => answers("synthetic", SYNTHETIC_STREAK);
 
-test("a window passes when every answer is correct and enough are real", () => {
-  assert.equal(summarizeWindow(answers(MIN_REAL_IN_WINDOW, 10)).passes, true);
+test("generated images in a row pass the first stage", () => {
+  const before = summarizeAnswers(answers("synthetic", SYNTHETIC_STREAK - 1), true);
+  assert.equal(before.synthetic.passed, false);
+  assert.equal(before.synthetic.needed, 1);
+  assert.equal(summarizeAnswers(passFirstStage(), true).synthetic.passed, true);
 });
 
-test("a window needs its full length", () => {
-  assert.equal(summarizeWindow(answers(10, 9)).passes, false);
+test("a wrong generated image restarts the first stage", () => {
+  const summary = summarizeAnswers(
+    [...answers("synthetic", 9), ...answers("synthetic", 1, false), ...answers("synthetic", 3)],
+    true,
+  );
+  assert.equal(summary.synthetic.passed, false);
+  assert.equal(summary.synthetic.needed, SYNTHETIC_STREAK - 3);
 });
 
-test("a window needs enough real images", () => {
-  assert.equal(summarizeWindow(answers(MIN_REAL_IN_WINDOW - 1, 11)).passes, false);
+test("real scans in a row after the first stage qualify", () => {
+  const short = summarizeAnswers([...passFirstStage(), ...answers("real", REAL_STREAK - 1)], true);
+  assert.equal(short.passes, false);
+  assert.equal(short.real.needed, 1);
+  assert.equal(summarizeAnswers([...passFirstStage(), ...answers("real", REAL_STREAK)], true).passes, true);
 });
 
-test("a window fails on one wrong answer", () => {
-  const recent = answers(10, 10);
-  recent[5] = { correct: false, kind: "real" };
-  assert.equal(summarizeWindow(recent).passes, false);
+test("real scans from before the first stage is passed do not count", () => {
+  const summary = summarizeAnswers([...answers("real", REAL_STREAK), ...passFirstStage()], true);
+  assert.equal(summary.passes, false);
+  assert.deepEqual(summary.real.recent, []);
 });
 
-test("only the most recent answers count", () => {
-  const recent = [...answers(10, 10), { correct: false, kind: "real" }];
-  assert.equal(recent.length, WINDOW_SIZE + 1);
-  assert.equal(summarizeWindow(recent).passes, true);
+test("a wrong real scan restarts the second stage", () => {
+  const summary = summarizeAnswers(
+    [...passFirstStage(), ...answers("real", REAL_STREAK - 1), ...answers("real", 1, false)],
+    true,
+  );
+  assert.equal(summary.real.needed, REAL_STREAK);
 });
 
-test("reports each answer in the window, oldest first", () => {
-  const newestFirst = [...answers(1, 0), ...answers(1, 0, false), ...answers(2, 0)];
-  assert.deepEqual(summarizeWindow(newestFirst).recent, [true, true, false, true]);
+test("practice after the first stage changes nothing", () => {
+  const summary = summarizeAnswers(
+    [
+      ...passFirstStage(),
+      ...answers("real", 5),
+      ...answers("synthetic", 2, false),
+      ...answers("real", REAL_STREAK - 5),
+    ],
+    true,
+  );
+  assert.equal(summary.synthetic.passed, true);
+  assert.equal(summary.passes, true);
+});
+
+test("a class without generated images skips the first stage", () => {
+  assert.equal(summarizeAnswers(answers("real", REAL_STREAK), false).passes, true);
+});
+
+test("reports each answer in a stage, oldest first", () => {
+  const summary = summarizeAnswers(
+    [...answers("synthetic", 2), ...answers("synthetic", 1, false), ...answers("synthetic", 1)],
+    true,
+  );
+  assert.deepEqual(summary.synthetic.recent, [true, true, false, true]);
 });
 
 test("converts the dataset's spelling to Abkai", () => {

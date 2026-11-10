@@ -146,8 +146,8 @@ Users complete this section before they can do real work:
 
 - **Lessons** teach the script (planned after the first release).
 - **Reference:** the letter-form reference is available throughout.
-- **Quiz:** users keep working until the rolling score over their **last ~20 images reaches 100%**,
-  with feedback after each answer.
+- **Quiz:** users first answer **10 generated images in a row** correctly, then **15 real scans in a
+  row**, with feedback after each answer.
 - **Disclosure:** users are told that hidden checks exist and that they can review and dispute past
   test images.
 
@@ -155,14 +155,17 @@ Users complete this section before they can do real work:
 
 - Qualification is per script class, using the same `script` values as volumes. A user only receives
   images from volumes in classes they have qualified for.
-- The quiz covers category as well as transcription, so about 10% of images are not Manchu.
+- The quiz covers category as well as transcription, so about 10% of real scans are not Manchu.
 - Transcriptions must match exactly. The intended word field is not scored.
-- At least 10 of the 20 images must be real. A real image is only forced when the window could not
-  otherwise reach 10, so synthetic images appear from the start.
+- The first step uses only generated images. Once passed it is never undone, and only real scans
+  answered after it count towards the second step. A class without generated images skips it.
+- After the first step, users can practise on generated images whenever they like. Practice answers
+  are recorded but do not affect progress, and practice has its own waiting image so that it cannot
+  skip a quiz image.
 - Images do not repeat until a user has answered them all, and reloading cannot skip an image.
 - Quiz images are a separate collection from hidden checks and are never used as checks.
-- The quiz shows whether each of the last 20 answers was right, in order, and how many more correct
-  answers in a row the user needs.
+- The quiz shows whether each recent answer in the current step was right, in order, and how many more
+  correct answers in a row the user needs.
 
 ### The `regular` bank
 
@@ -178,13 +181,14 @@ Users complete this section before they can do real work:
 - Synthetic images are rendered from all-rights-reserved fonts, so they stay out of any publication
   until the fonts' terms are known.
 
-Requiring 20 in a row means persistence can eventually beat skill, and the image bank must be large:
+Requiring 15 real scans in a row means persistence can eventually beat skill, and the image bank must be
+large:
 
-| Per-image accuracy | Expected images to reach 20 in a row |
+| Per-image accuracy | Expected real scans to reach 15 in a row |
 | --- | --- |
-| 95% | about 36 |
-| 90% | about 72 |
-| 80% | about 430 |
+| 95% | about 23 |
+| 90% | about 39 |
+| 80% | about 140 |
 
 **[Proposed]** Each script class needs at least 300 real images at launch.
 
@@ -221,9 +225,9 @@ with the quality control milestone, so the text must be true before non-test use
 Passing the quiz is not permanent. If a user does poorly on many hidden checks in a row, they lose
 qualification for that script class and must pass the quiz again before labelling it.
 
-- The quiz stays at 20 correct in a row, because users should be very good at this.
-- The quiz window restarts when qualification is lost. Earlier answers do not count, or a returning user
-  would pass immediately.
+- The quiz stays at 15 real scans in a row, because users should be very good at this.
+- The whole quiz restarts when qualification is lost, including the generated images. Earlier answers do
+  not count, or a returning user would pass immediately.
 - Quiz images already answered are not repeated until the bank runs out.
 - Existing labels are kept, as all labels are. Trust still decides whether they count.
 - If a dispute overturns a known label, the run of failures is recalculated, and qualification is

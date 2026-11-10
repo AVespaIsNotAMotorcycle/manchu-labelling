@@ -22,9 +22,19 @@ function Introduction({ onStart }: { onStart: () => void }) {
         shows. If it is Manchu, type exactly what is written, using Abkai. The letter reference and its
         links are there to help, so use them whenever you like.
       </p>
+      <p>You will see the answer after each image. The quiz has two steps:</p>
+      <ol>
+        <li>
+          Answer <strong>10 generated images in a row</strong> correctly. These are words rendered in
+          Manchu fonts.
+        </li>
+        <li>
+          Then answer <strong>15 real scans in a row</strong> correctly. Some of these are not Manchu.
+        </li>
+      </ol>
       <p>
-        You will see the answer after each image. Keep going until your <strong>last 20 answers</strong>{" "}
-        are all correct. At least 10 of those 20 must be real scans, not generated images.
+        Once you finish the first step, you will not need to repeat it. You can still go back and
+        practise on generated images whenever you like, and those answers will not affect your progress.
       </p>
       <h2>Hidden checks</h2>
       <p>
@@ -54,27 +64,50 @@ function AnswerMark({ correct }: { correct: boolean | undefined }) {
   );
 }
 
-function ProgressMeter({ progress }: { progress: QuizProgress }) {
-  const { recent, real, windowSize, minReal } = progress;
-  // The answers after the last wrong one, or all of them if none were wrong.
-  const streak = recent.length - 1 - recent.lastIndexOf(false);
-  const needed = windowSize - streak;
-  const slots = Array.from({ length: windowSize }, (_, index) => recent[index]);
+function ProgressMeter(props: {
+  progress: QuizProgress;
+  practice: boolean;
+  onPracticeChange: (practice: boolean) => void;
+}) {
+  const { progress, practice, onPracticeChange } = props;
+  const { synthetic, real } = progress;
+
+  if (practice) {
+    return (
+      <div className="progress">
+        <p>
+          <strong>Practice with generated images.</strong> These answers do not affect your progress.
+        </p>
+        <button type="button" onClick={() => onPracticeChange(false)}>
+          Back to the quiz
+        </button>
+      </div>
+    );
+  }
+
+  const stage = synthetic.passed ? real : synthetic;
+  const goal = synthetic.passed ? "to qualify" : "to move on to real scans";
+  const slots = Array.from({ length: stage.length }, (_, index) => stage.recent[index]);
   return (
     <div className="progress">
       <p>
+        {synthetic.passed ? "Step 2 of 2: real scans" : "Step 1 of 2: generated images"} ·{" "}
         <strong>
-          {needed === 0
-            ? `${windowSize} correct in a row`
-            : `${needed} more correct in a row to qualify`}
-        </strong>{" "}
-        · At least {minReal} of the {windowSize} must be real scans ({real} so far)
+          {stage.needed === 0
+            ? `${stage.length} correct in a row`
+            : `${stage.needed} more correct in a row ${goal}`}
+        </strong>
       </p>
-      <ol className="marks" aria-label={`Your last ${windowSize} answers, oldest first`}>
+      <ol className="marks" aria-label={`Your last ${stage.length} answers in this step, oldest first`}>
         {slots.map((correct, index) => (
           <AnswerMark key={index} correct={correct} />
         ))}
       </ol>
+      {synthetic.passed && (
+        <button type="button" onClick={() => onPracticeChange(true)}>
+          Practise with generated images
+        </button>
+      )}
     </div>
   );
 }
@@ -83,10 +116,11 @@ function Feedback(props: {
   item: QuizItem;
   given: { category: string; abkai: string };
   result: QuizFeedback;
+  practice: boolean;
   onNext: () => void;
   onFinish: () => void;
 }) {
-  const { item, given, result, onNext, onFinish } = props;
+  const { item, given, result, practice, onNext, onFinish } = props;
   const { answer, correct, progress } = result;
   const givenManchu = abkaiToManchu(given.abkai).text;
   return (
@@ -132,7 +166,7 @@ function Feedback(props: {
           )}
         </dl>
         <p className="hint">Source: {result.source}</p>
-        {progress.qualified ? (
+        {progress.qualified && !practice ? (
           <>
             <p className="result right">You are ready to label.</p>
             <button type="button" onClick={onFinish} autoFocus>
@@ -153,8 +187,9 @@ function Question(props: {
   item: QuizItem;
   onAnswered: (given: { category: string; abkai: string }, result: QuizFeedback) => void;
   scriptClass: string;
+  practice: boolean;
 }) {
-  const { item, onAnswered, scriptClass } = props;
+  const { item, onAnswered, scriptClass, practice } = props;
   const [category, setCategory] = useState("manchu");
   const [abkai, setAbkai] = useState("");
   const [error, setError] = useState("");
@@ -167,10 +202,11 @@ function Question(props: {
     event.preventDefault();
     if (!ready) return;
     try {
-      const result = await answerQuiz(scriptClass, {
-        category,
-        ...(isManchu ? { transcription: abkai } : {}),
-      });
+      const result = await answerQuiz(
+        scriptClass,
+        { category, ...(isManchu ? { transcription: abkai } : {}) },
+        practice,
+      );
       onAnswered({ category, abkai }, result);
     } catch (failure) {
       setError((failure as Error).message);
@@ -221,6 +257,7 @@ export function Training(props: { scriptClass: string; onQualified: () => void }
   const [item, setItem] = useState<QuizItem | null | undefined>(undefined);
   const [progress, setProgress] = useState<QuizProgress | null>(null);
   const [started, setStarted] = useState(false);
+  const [practice, setPractice] = useState(false);
   const [answered, setAnswered] = useState<{
     given: { category: string; abkai: string };
     result: QuizFeedback;
@@ -230,7 +267,7 @@ export function Training(props: { scriptClass: string; onQualified: () => void }
   function loadNext() {
     setAnswered(null);
     setItem(undefined);
-    getQuizItem(scriptClass)
+    getQuizItem(scriptClass, practice)
       .then((next) => {
         setItem(next.item);
         setProgress(next.progress);
@@ -238,7 +275,7 @@ export function Training(props: { scriptClass: string; onQualified: () => void }
       .catch((failure: Error) => setError(failure.message));
   }
 
-  useEffect(loadNext, [scriptClass]);
+  useEffect(loadNext, [scriptClass, practice]);
 
   const isNew = progress?.answered === 0;
 
@@ -250,7 +287,11 @@ export function Training(props: { scriptClass: string; onQualified: () => void }
       ) : (
         <>
           {progress && (
-            <ProgressMeter progress={answered?.result.progress ?? progress} />
+            <ProgressMeter
+              progress={answered?.result.progress ?? progress}
+              practice={practice}
+              onPracticeChange={setPractice}
+            />
           )}
           {item === undefined && !error && <p className="status">Loading…</p>}
           {item === null && <p className="status">There are no quiz images yet.</p>}
@@ -259,6 +300,7 @@ export function Training(props: { scriptClass: string; onQualified: () => void }
               item={item}
               given={answered.given}
               result={answered.result}
+              practice={practice}
               onNext={loadNext}
               onFinish={onQualified}
             />
@@ -268,6 +310,7 @@ export function Training(props: { scriptClass: string; onQualified: () => void }
               key={item.id}
               item={item}
               scriptClass={scriptClass}
+              practice={practice}
               onAnswered={(given, result) => setAnswered({ given, result })}
             />
           )}
