@@ -178,10 +178,13 @@ Users complete this section before they can do real work:
 | Synthetic | Synthetic Manchu words | 600 | Rendered from a lexicon in the 12 local fonts |
 | Printed | Printed Manchu words | 2,428 | Sun et al. (2026), one photo per word, CC BY 4.0 |
 | Manuscript | Chinese characters | 64 | Chinese columns of the trial volume, each reviewed by eye |
+| Manuscript | Manchu manuscript words | 3 | *Justan i bithe*, Stabi Berlin Hs. or. 10791, public domain, read against manc.hu |
 
-- **Manuscript gap:** the manuscript phase has no Manchu images yet, so it only tests the category
-  question, although the labelling queue is manuscripts. Passing shows a user can read print. Manchu
-  manuscript items must be added once Manjurists can supply answers.
+- **Manuscript gap:** the manuscript phase has only 3 Manchu images, so it mostly tests the category
+  question, although the labelling queue is manuscripts. More Manchu manuscript items must be added as
+  Manjurists supply answers.
+- Later additions are small banks in `data/training/<name>/`, imported with `--bank`. Each is marked
+  as imported so that it cannot be imported twice.
 - Synthetic images are rendered from all-rights-reserved fonts, so they stay out of any publication
   until the fonts' terms are known.
 
