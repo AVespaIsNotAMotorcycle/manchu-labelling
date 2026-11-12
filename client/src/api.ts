@@ -91,3 +91,21 @@ export const getNextImage = () => request<{ image: LabelImage | null }>("/api/la
 export const getContext = (id: string) => request<PageContext>(`/api/labelling/${id}/context`);
 export const submitLabel = (id: string, label: Label) =>
   request<void>(`/api/labelling/${id}`, { method: "POST", body: label });
+
+/** A held-back image whose labelers all agreed, waiting for an admin. */
+export interface HeldBackItem {
+  id: string;
+  imageUrl: string;
+  context: PageContext;
+  category: string;
+  manchu?: string;
+  abkai?: string;
+  labelers: number;
+}
+
+export const getHeldBack = () => request<{ items: HeldBackItem[] }>("/api/admin/held-back");
+export const decideHeldBack = (item: HeldBackItem, decision: "yes" | "no") =>
+  request<void>(`/api/admin/held-back/${item.id}`, {
+    method: "POST",
+    body: { decision, category: item.category, manchu: item.manchu },
+  });

@@ -76,6 +76,22 @@ const knownLabelSchema = new Schema({
   state: { type: String, enum: ["active", "retired", "corrected"], default: "active" },
 });
 
+/**
+ * An admin's decision on a held-back image whose labelers all agreed. A yes also creates its known label.
+ * Decisions are final, so an image is only reviewed once.
+ */
+const heldBackReviewSchema = new Schema({
+  wordImage: { type: Schema.Types.ObjectId, ref: "WordImage", required: true, unique: true },
+  reviewer: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  decision: { type: String, enum: ["yes", "no"], required: true },
+  /** The answer the labelers agreed on, as the reviewer saw it. */
+  category: { type: String, enum: CATEGORIES, required: true },
+  manchu: { type: String, match: STORED_MANCHU },
+  labelers: [{ type: Schema.Types.ObjectId, ref: "User", required: true }],
+  createdAt: { type: Date, default: Date.now, immutable: true },
+});
+heldBackReviewSchema.plugin(appendOnly);
+
 /** Records that a user was given an image. This must never say whether the image is a check. */
 const assignmentSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: "User", required: true },
@@ -88,3 +104,4 @@ assignmentSchema.index({ user: 1, wordImage: 1 }, { unique: true });
 export const Annotation = model("Annotation", annotationSchema);
 export const KnownLabel = model("KnownLabel", knownLabelSchema);
 export const Assignment = model("Assignment", assignmentSchema);
+export const HeldBackReview = model("HeldBackReview", heldBackReviewSchema);

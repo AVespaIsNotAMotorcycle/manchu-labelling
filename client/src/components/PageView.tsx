@@ -2,15 +2,8 @@ import { useEffect, useState } from "react";
 
 import { getContext, type PageContext } from "../api.ts";
 
-export function PageView({ imageId }: { imageId: string }) {
-  const [context, setContext] = useState<PageContext | null>(null);
-
-  useEffect(() => {
-    getContext(imageId).then(setContext);
-  }, [imageId]);
-
-  if (!context) return <p className="status">Loading page…</p>;
-
+/** The full page with the word's box drawn on it. */
+export function PageImage({ context }: { context: PageContext }) {
   const { box, width, height } = context;
   const percent = (value: number, total: number) => `${(value / total) * 100}%`;
   return (
@@ -28,4 +21,15 @@ export function PageView({ imageId }: { imageId: string }) {
       />
     </div>
   );
+}
+
+export function PageView({ imageId }: { imageId: string }) {
+  const [context, setContext] = useState<PageContext | null>(null);
+
+  useEffect(() => {
+    getContext(imageId).then(setContext);
+  }, [imageId]);
+
+  if (!context) return <p className="status">Loading page…</p>;
+  return <PageImage context={context} />;
 }

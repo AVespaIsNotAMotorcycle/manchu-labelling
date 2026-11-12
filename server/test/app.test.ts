@@ -14,12 +14,13 @@ import { createApp } from "../src/app.ts";
 import { checkResults, passesCheck, summarizeChecks } from "../src/checks.ts";
 import { connectDatabase } from "../src/db.ts";
 import { CropReview, WordImage, WordInstance } from "../src/models/crops.ts";
-import { Annotation, Assignment, KnownLabel } from "../src/models/labels.ts";
+import { Annotation, Assignment, HeldBackReview, KnownLabel } from "../src/models/labels.ts";
 import { Page, Volume } from "../src/models/sources.ts";
 import { Qualification, TrainingAttempt, TrainingItem } from "../src/models/training.ts";
 import { User } from "../src/models/users.ts";
 import { hashPassword } from "../src/passwords.ts";
 import { checkRate, pickNextImage } from "../src/queue.ts";
+import { agreedAnswer } from "../src/held-back.ts";
 import { holdBackUnchosen } from "../src/scripts/hold-back.ts";
 import { importKnownLabels } from "../src/scripts/import-known-labels.ts";
 import { splitRealTraining } from "../src/scripts/split-real-training.ts";
@@ -359,12 +360,12 @@ test("retired checks are not given, and known images never go to the ordinary qu
 });
 
 /** Gives an image submitted labels from new users. */
-async function labelBy(image: Types.ObjectId, count: number) {
+async function labelBy(image: Types.ObjectId, count: number, label: object = { category: "chinese" }) {
   const before = await Annotation.countDocuments({ wordImage: image });
   for (let index = before; index < before + count; index += 1) {
     const user = (await makeUser(`labeler${index}@example.com`))._id;
     await Assignment.create({ user, wordImage: image, submittedAt: new Date() });
-    await Annotation.create({ wordImage: image, user, category: "chinese", converterVersion: 1 });
+    await Annotation.create({ wordImage: image, user, converterVersion: 1, ...label });
   }
 }
 
@@ -687,4 +688,74 @@ test("only admins can read and rule on crop reviews", async () => {
     body: { chosenCrop: String(imageId) },
   });
   assert.equal(again.status, 409);
+});
+
+const manju = { category: "manchu", transcription: { abkai: "manju", manchu: abkaiToManchu("manju").text } };
+
+test("a held-back answer needs 3 labelers who agree exactly and are sure", () => {
+  const user = new Types.ObjectId();
+  const label = { user, ...manju } as Parameters<typeof agreedAnswer>[0][number];
+  assert.equal(agreedAnswer([label, label]), null);
+  assert.deepEqual(agreedAnswer([label, label, label])?.manchu, manju.transcription.manchu);
+  const other = { ...label, transcription: { manchu: abkaiToManchu("manja").text } };
+  assert.equal(agreedAnswer([label, label, other]), null);
+  const unsure = { ...label, confidence: { transcription: "unconfident" } };
+  assert.equal(agreedAnswer([label, label, unsure]), null);
+  const unreadable = { ...label, transcription: { manchu: abkaiToManchu("man?u").text } };
+  assert.equal(agreedAnswer([unreadable, unreadable, unreadable]), null);
+  const chinese = { user, category: "chinese" as const };
+  assert.deepEqual(agreedAnswer([chinese, chinese, chinese])?.category, "chinese");
+});
+
+test("an admin confirms agreed held-back answers, which become hidden checks", async () => {
+  const image = await WordImage.findById(imageId).orFail();
+  await WordInstance.updateOne({ _id: image.instance }, { heldBack: true });
+  const labeler = await loggedIn("labeler@example.com");
+  assert.equal((await labeler.request("/api/admin/held-back")).status, 403);
+
+  const admin = await loggedIn("admin@example.com", { role: "admin" });
+  await labelBy(imageId, 2, manju);
+  assert.deepEqual((await (await admin.request("/api/admin/held-back")).json()).items, []);
+  await labelBy(imageId, 1, manju);
+  const [item] = (await (await admin.request("/api/admin/held-back")).json()).items;
+  assert.equal(item.id, String(imageId));
+  assert.equal(item.abkai, "manju");
+  assert.equal(item.labelers, 3);
+  assert.equal(item.context.box.height, 4);
+
+  const decide = (body: object) =>
+    admin.request(`/api/admin/held-back/${imageId}`, { method: "POST", body });
+  assert.equal((await decide({ decision: "maybe", category: "manchu" })).status, 400);
+  // A labeler corrected their label after the admin loaded the page.
+  assert.equal((await decide({ decision: "yes", category: "chinese" })).status, 409);
+  assert.equal(await KnownLabel.countDocuments(), 0);
+
+  assert.equal((await decide({ decision: "yes", category: "manchu", manchu: item.manchu })).status, 204);
+  const known = await KnownLabel.findOne({ wordImage: imageId }).orFail();
+  assert.equal(known.manchu, manju.transcription.manchu);
+  assert.equal(known.state, "active");
+  assert.match(known.origin, /3 labelers agreed/);
+  assert.equal((await HeldBackReview.findOne({ wordImage: imageId }).orFail()).labelers.length, 3);
+  assert.deepEqual((await (await admin.request("/api/admin/held-back")).json()).items, []);
+  assert.equal((await decide({ decision: "yes", category: "manchu", manchu: item.manchu })).status, 409);
+});
+
+test("an admin can turn down an agreed answer, and it is not offered again", async () => {
+  const image = await WordImage.findById(imageId).orFail();
+  await WordInstance.updateOne({ _id: image.instance }, { heldBack: true });
+  await labelBy(imageId, 3, manju);
+  const admin = await loggedIn("admin@example.com", { role: "admin" });
+  const response = await admin.request(`/api/admin/held-back/${imageId}`, {
+    method: "POST",
+    body: { decision: "no", category: "manchu", manchu: manju.transcription.manchu },
+  });
+  assert.equal(response.status, 204);
+  assert.equal(await KnownLabel.countDocuments(), 0);
+  assert.deepEqual((await (await admin.request("/api/admin/held-back")).json()).items, []);
+});
+
+test("ordinary images never go to held-back review", async () => {
+  await labelBy(imageId, 3, manju);
+  const admin = await loggedIn("admin@example.com", { role: "admin" });
+  assert.deepEqual((await (await admin.request("/api/admin/held-back")).json()).items, []);
 });

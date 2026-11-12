@@ -9,16 +9,20 @@ import {
   type TrainingStatus,
 } from "./api.ts";
 import { FontPicker } from "./components/FontPicker.tsx";
+import { HeldBackReview } from "./components/HeldBackReview.tsx";
 import { Labelling } from "./components/Labelling.tsx";
 import { LicensePrompt } from "./components/LicensePrompt.tsx";
 import { Login } from "./components/Login.tsx";
 import { Reference } from "./components/Reference.tsx";
 import { Training } from "./components/Training.tsx";
 
+type View = "label" | "train" | "admin";
+
 function Workspace(props: {
+  isAdmin: boolean;
   status: TrainingStatus;
-  view: "label" | "train" | null;
-  onViewChange: (view: "label" | "train") => void;
+  view: View | null;
+  onViewChange: (view: View) => void;
   onQualified: () => void;
 }) {
   const { status, onViewChange, onQualified } = props;
@@ -42,8 +46,14 @@ function Workspace(props: {
           <button type="button" aria-current={view === "train"} onClick={() => onViewChange("train")}>
             Training
           </button>
+          {props.isAdmin && (
+            <button type="button" aria-current={view === "admin"} onClick={() => onViewChange("admin")}>
+              Admin
+            </button>
+          )}
         </nav>
         {view === "label" && <Labelling />}
+        {view === "admin" && props.isAdmin && <HeldBackReview />}
         {view === "train" &&
           (scriptClass ? (
             <Training scriptClass={scriptClass} onQualified={onQualified} />
@@ -60,7 +70,7 @@ export function App() {
   const [account, setAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(true);
   const [training, setTraining] = useState<TrainingStatus | null>(null);
-  const [view, setView] = useState<"label" | "train" | null>(null);
+  const [view, setView] = useState<View | null>(null);
 
   useEffect(() => {
     getAccount()
@@ -106,6 +116,7 @@ export function App() {
       {account.licenseAccepted && !training && <p className="status">Loading…</p>}
       {account.licenseAccepted && training && (
         <Workspace
+          isAdmin={account.role === "admin"}
           status={training}
           view={view}
           onViewChange={setView}

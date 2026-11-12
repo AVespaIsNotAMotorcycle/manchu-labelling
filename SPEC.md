@@ -313,7 +313,12 @@ answers ever being published:
 - Until it is published, the held-back set can also serve as a test split for OCR models.
 - As built: `heldBack` on word instances, set by `import-segments` and, for earlier volumes, once by
   `hold-back`, with a cryptographic random source. The queue asks for 3 labels on held-back images.
-  Confirming answers and leaving held-back words out of releases come next.
+- As built, until trust exists, any qualified labeler counts as trusted. An image goes to admins under
+  the Admin tab when at least 3 labelers' latest labels match exactly, none is marked unsure, and no
+  letter is `?`. The admin's yes or no is final and kept in `heldBackReviews`. A yes creates an active
+  known label whose origin names the labelers' and admin's user IDs. Turned-down and disputed images
+  stay held back, and are not checks.
+- Leaving held-back words out of releases comes with the export.
 
 ## 8. Roles
 
@@ -405,6 +410,7 @@ dataset hub such as Hugging Face.
 | `cropReviews` | Competing crops awaiting an admin's ruling, and the outcome |
 | `assignments` | Which user was given which image, with no sign of whether it is a check |
 | `knownLabels` | Answers, their origin, and their state (active, retired, corrected). The only record of which images are checks |
+| `heldBackReviews` | An admin's yes or no on the answer that labelers agreed on for a held-back image |
 | `trainingItems` | Quiz images, their answers, and their sources |
 | `trainingAttempts` | Append-only quiz answers |
 | `trainingStates` | The image each user must answer next |
