@@ -3,6 +3,9 @@
  *
  * Usage: npm run import-segments -w server -- 10499177 --production manuscript --script regular
  *
+ * For a volume whose columns mix Manchu and Chinese, segments/scripts.jsonl from classify_scripts.py
+ * says which crops are Chinese. They are imported too, but the labelling queue leaves them out.
+ *
  * Each import adds a new segmentation run. A crop joins an existing word instance if it shows the same
  * word as a crop from an earlier run. Competing crops go to an admin for a ruling.
  */
@@ -88,6 +91,32 @@ async function main(): Promise<void> {
     .trim()
     .split("\n")
     .map((line) => JSON.parse(line));
+
+  // classify_scripts.py writes each crop's script for volumes with mixed columns.
+  const scripts = await readFile(join(volumeDirectory, "segments/scripts.jsonl"), "utf8").then(
+    (text) =>
+      new Map<string, string>(
+        text
+          .trim()
+          .split("\n")
+          .map((line) => {
+            const { file, type } = JSON.parse(line);
+            return [file, type];
+          }),
+      ),
+    () => null,
+  );
+  if (scripts) {
+    for (const word of words) {
+      const type = scripts.get(word.file);
+      if (type !== "manchu" && type !== "chinese") {
+        throw new Error(`scripts.jsonl has no script for ${word.file}. Run classify_scripts.py again.`);
+      }
+      word.type = type;
+    }
+    const chinese = words.filter((word) => word.type === "chinese").length;
+    console.log(`scripts.jsonl: ${words.length - chinese} Manchu crops, ${chinese} Chinese crops`);
+  }
 
   await connectDatabase();
   await mongoose.connection.syncIndexes();

@@ -54,6 +54,11 @@ owner has not yet approved. Everything else is agreed. Unresolved questions are 
    the other side, and contain text that runs vertically in columns from left to right. Some columns mix
    the scripts, with a Manchu phrase followed by its Chinese translation, so each column is cut into
    word-sized pieces and its Chinese characters become separate crops.
+   `classify_scripts.py` then marks each crop Manchu or Chinese, and the labelling queue serves only
+   the Manchu ones. It trains on a volume with unmixed columns, then retrains on the crops it is surest
+   of in this volume, adding each crop's width relative to the page's Manchu words. Crops confirmed as
+   words in review are always Manchu. On *Justan i bithe*, a visual check of the crops the first
+   classifier was unsure of put roughly 2% of all crops on the wrong side.
 4. Store each crop with its **source page, bounding box, and reading order** (page, column, word
    index), so that others can rebuild lines and pages.
 5. Set production and script style for the volume (section 4).

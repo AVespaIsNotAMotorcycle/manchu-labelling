@@ -30,6 +30,7 @@ python3 -m venv .venv && .venv/bin/pip install -r pipeline/requirements.txt
 .venv/bin/python pipeline/align_transcription.py PPN3306132969 --image-offset 1 --reference 10499177
 .venv/bin/python pipeline/review_candidates.py PPN3306132969   # yes/no review at http://127.0.0.1:8765
 .venv/bin/python pipeline/review_candidates.py PPN3306132969 --export <file>   # confirmed crops
+.venv/bin/python pipeline/classify_scripts.py PPN3306132969 --reference 10499177   # before import-segments
 npm run import-segments -w server -- 10499177 --production manuscript --script regular
 .venv/bin/python pipeline/build_training_bank.py --photos <dir> --lexicon <file> --fonts client/src/fonts --volume 10499177
 npm run import-training -w server -- --script regular

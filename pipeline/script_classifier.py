@@ -30,12 +30,13 @@ def features(path: Path) -> np.ndarray:
 
 
 class ScriptClassifier:
+    """Logistic regression on feature rows whose last value is a constant 1."""
+
     def __init__(self, weights: np.ndarray, mean: np.ndarray, scale: np.ndarray):
         self.weights, self.mean, self.scale = weights, mean, scale
 
     @classmethod
-    def train(cls, crops: list[Path], is_chinese: list[bool], steps: int = 400) -> "ScriptClassifier":
-        x = np.stack([features(path) for path in crops])
+    def fit(cls, x: np.ndarray, is_chinese: list[bool], steps: int = 400) -> "ScriptClassifier":
         y = np.array(is_chinese, dtype=np.float32)
         mean, scale = x.mean(axis=0), x.std(axis=0) + 1e-6
         mean[-1], scale[-1] = 0.0, 1.0
@@ -47,9 +48,15 @@ class ScriptClassifier:
             weights -= 0.5 * gradient
         return cls(weights, mean, scale)
 
+    @classmethod
+    def train(cls, crops: list[Path], is_chinese: list[bool], steps: int = 400) -> "ScriptClassifier":
+        return cls.fit(np.stack([features(path) for path in crops]), is_chinese, steps)
+
+    def probability(self, row: np.ndarray) -> float:
+        return float(1 / (1 + np.exp(-((row - self.mean) / self.scale) @ self.weights)))
+
     def chinese_probability(self, path: Path) -> float:
-        x = (features(path) - self.mean) / self.scale
-        return float(1 / (1 + np.exp(-x @ self.weights)))
+        return self.probability(features(path))
 
 
 def reference_crops(volume_dir: Path, limit: int, seed: int = 0) -> tuple[list[Path], list[bool]]:
