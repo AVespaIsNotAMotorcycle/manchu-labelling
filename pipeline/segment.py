@@ -1,6 +1,13 @@
 """Segment a downloaded volume's page images into candidate word crops.
 
-Usage: python pipeline/segment.py 10499177 [--pages 3 40 80]
+Usage: python pipeline/segment.py 10499177 [--pages 3 40 80] [--single-pages]
+
+Use --single-pages for a volume photographed one page at a time rather than as spreads. Its words are
+all on the "left" side, so crop names keep the same form.
+
+Use --mixed-columns for a volume whose columns mix Manchu with Chinese, such as a Manchu phrase followed
+by its translation. Every column is then cut into Manchu-style words and marked as Manchu, so its Chinese
+characters become separate crops, which labelers can mark as Chinese.
 
 Steps for each image: find the paper, split the spread at the fold, binarize, group connected strokes into
 columns, classify each column as Manchu or Chinese, then build words. A Manchu word is one continuous
@@ -219,7 +226,9 @@ def chinese_characters(column: list[Component], paper_height: int) -> list[Box]:
     return [box for box in characters if box.height >= min_height]
 
 
-def segment_side(image: np.ndarray, gray: np.ndarray, paper_height: int) -> list[dict]:
+def segment_side(
+    image: np.ndarray, gray: np.ndarray, paper_height: int, mixed_columns: bool = False
+) -> list[dict]:
     """Return the word boxes on one side of a spread, in that side's coordinates."""
     ink = binarize(image, gray)
     height, width = ink.shape
@@ -231,7 +240,7 @@ def segment_side(image: np.ndarray, gray: np.ndarray, paper_height: int) -> list
 
     results = []
     for column_index, column in enumerate(group_columns(find_components(ink, paper_height), paper_height)):
-        manchu = is_manchu_column(column, paper_height)
+        manchu = mixed_columns or is_manchu_column(column, paper_height)
         boxes = manchu_words(column, paper_height) if manchu else chinese_characters(column, paper_height)
         for word_index, box in enumerate(boxes):
             results.append(
@@ -245,14 +254,16 @@ def segment_side(image: np.ndarray, gray: np.ndarray, paper_height: int) -> list
     return results
 
 
-def process_image(path: Path, output: Path, record: dict) -> list[dict]:
+def process_image(
+    path: Path, output: Path, record: dict, single_page: bool = False, mixed_columns: bool = False
+) -> list[dict]:
     image = cv2.imread(str(path))
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     paper = paper_box(gray)
     paper_height = paper.height
     paper_image = image[paper.y0 : paper.y1, paper.x0 : paper.x1]
     paper_gray = gray[paper.y0 : paper.y1, paper.x0 : paper.x1]
-    fold = find_fold(paper_gray)
+    fold = paper_gray.shape[1] if single_page else find_fold(paper_gray)
 
     overlay = image.copy()
     cv2.line(overlay, (paper.x0 + fold, 0), (paper.x0 + fold, image.shape[0]), (255, 0, 0), 4)
@@ -260,7 +271,10 @@ def process_image(path: Path, output: Path, record: dict) -> list[dict]:
     colors = {"manchu": (0, 0, 255), "chinese": (0, 160, 0)}
     records = []
     for side, start, end in (("left", 0, fold), ("right", fold, paper_image.shape[1])):
-        for item in segment_side(paper_image[:, start:end], paper_gray[:, start:end], paper_height):
+        if end <= start:
+            continue
+        side_image = paper_image[:, start:end]
+        for item in segment_side(side_image, paper_gray[:, start:end], paper_height, mixed_columns):
             box = item["box"]
             x0 = max(paper.x0 + start + box.x0 - padding, 0)
             y0 = max(paper.y0 + box.y0 - padding, 0)
@@ -289,6 +303,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("volume_id")
     parser.add_argument("--pages", type=int, nargs="*", help="Image numbers to process (default: all)")
+    parser.add_argument("--single-pages", action="store_true", help="Images are single pages, not spreads")
+    parser.add_argument("--mixed-columns", action="store_true", help="Columns mix Manchu and Chinese")
     args = parser.parse_args()
 
     volume_dir = DATA_DIR / args.volume_id
@@ -300,7 +316,9 @@ def main() -> None:
     selected = [page for page in pages if not args.pages or page["index"] in args.pages]
     with (output / "words.jsonl").open("w") as words_file:
         for page in selected:
-            records = process_image(volume_dir / "pages" / page["file"], output, page)
+            records = process_image(
+                volume_dir / "pages" / page["file"], output, page, args.single_pages, args.mixed_columns
+            )
             for item in records:
                 words_file.write(json.dumps(item) + "\n")
             manchu = sum(item["type"] == "manchu" for item in records)

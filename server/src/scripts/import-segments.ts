@@ -31,6 +31,13 @@ interface PageRecord {
   height: number;
 }
 
+interface VolumeDetails {
+  sourceId: string;
+  title: string;
+  manifestUrl: string;
+  rights: { statement: string; attribution: string; permanentLink: string };
+}
+
 interface WordRecord {
   file: string;
   image: number;
@@ -85,21 +92,23 @@ async function main(): Promise<void> {
   await connectDatabase();
   await mongoose.connection.syncIndexes();
 
-  const sourceId = `URN-3:FHCL:${volumeId}`;
-  const volume =
-    (await Volume.findOne({ sourceId })) ??
-    (await Volume.create({
-      sourceId,
+  // fetch_volume.py writes volume.json. Volumes fetched before it did are all from Harvard.
+  const details: VolumeDetails = await readFile(join(volumeDirectory, "volume.json"), "utf8").then(
+    (text) => JSON.parse(text),
+    () => ({
+      sourceId: `URN-3:FHCL:${volumeId}`,
       title: manifest.label,
       manifestUrl: manifest["@id"],
-      production,
-      script,
       rights: {
         statement: manifest.attribution,
         attribution: "Harvard-Yenching Library, Harvard University",
         permanentLink: `https://nrs.harvard.edu/urn-3:FHCL:${volumeId}`,
       },
-    }));
+    }),
+  );
+  const volume =
+    (await Volume.findOne({ sourceId: details.sourceId })) ??
+    (await Volume.create({ ...details, production, script }));
 
   const pageIds = new Map<number, Types.ObjectId>();
   for (const page of pages) {
