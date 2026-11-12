@@ -2,29 +2,36 @@ import type { Types } from "mongoose";
 
 import type { Category } from "./models/labels.ts";
 import type { ScriptClass } from "./models/sources.ts";
-import { Qualification, TrainingAttempt, TrainingItem, TrainingState } from "./models/training.ts";
+import {
+  Qualification,
+  TRAINING_KINDS,
+  TrainingAttempt,
+  TrainingItem,
+  TrainingState,
+  type TrainingKind,
+} from "./models/training.ts";
 
 type Id = Types.ObjectId;
-type Kind = "real" | "synthetic";
 
-/** Generated images answered correctly in a row to finish the first stage. */
-export const SYNTHETIC_STREAK = 10;
-/** Real scans answered correctly in a row, after the first stage, to qualify. */
-export const REAL_STREAK = 15;
-/** Share of real scans that are not Manchu, so that the category question stays meaningful. */
+/** Correct answers in a row that each phase needs. */
+export const STREAK = 8;
+/** Share of real images that are not Manchu, so that the category question stays meaningful. */
 const NON_MANCHU_SHARE = 0.1;
 
 /**
- * The quiz proper, or practice on generated images once the first stage is passed. Each has its own
- * waiting image, so that switching between them cannot skip one.
+ * The quiz proper, or practice on synthetic images once that phase is passed. Each has its own waiting
+ * image, so that switching between them cannot skip one.
  */
 export type Mode = "quiz" | "practice";
 const STATE_FIELD = { quiz: "currentItem", practice: "practiceItem" } as const;
 
-export interface Stage {
-  /** Whether each of the latest answers in this stage was correct, oldest first. */
+export interface PhaseProgress {
+  phase: TrainingKind;
+  /** Passing a phase is permanent, so later answers cannot undo it. */
+  passed: boolean;
+  /** Whether each of the latest answers in this phase was correct, oldest first. */
   recent: boolean[];
-  /** Correct answers in a row that the stage needs. */
+  /** Correct answers in a row that the phase needs. */
   length: number;
   /** How many more correct answers in a row are needed. */
   needed: number;
@@ -32,9 +39,7 @@ export interface Stage {
 
 export interface Progress {
   answered: number;
-  /** Passing this stage is permanent, so practice afterwards cannot undo it. */
-  synthetic: Stage & { passed: boolean };
-  real: Stage;
+  phases: PhaseProgress[];
   qualified: boolean;
 }
 
@@ -45,49 +50,52 @@ interface Answer {
 
 const correctInARow = (results: readonly boolean[]) => results.length - 1 - results.lastIndexOf(false);
 
-function stage(results: readonly boolean[], length: number): Stage {
-  return {
-    recent: results.slice(-length),
-    length,
-    needed: Math.max(0, length - correctInARow(results)),
-  };
-}
-
 /**
- * Works out both stages from every answer in a class, oldest first. Real answers only count once the
- * first stage is passed, and generated images after that are practice. A class without generated
- * images skips the first stage.
+ * Works out every phase from all of a user's answers in a class, oldest first. An answer only counts
+ * towards the phase the user was in when they gave it, so practice and answers from before the quiz had
+ * phases change nothing. A phase without any images is passed automatically.
  */
 export function summarizeAnswers(
   answers: readonly Answer[],
-  hasSynthetic: boolean,
+  phasesWithImages: ReadonlySet<string>,
 ): Omit<Progress, "qualified"> & { passes: boolean } {
-  const synthetic: boolean[] = [];
-  const real: boolean[] = [];
-  let passed = !hasSynthetic;
-  for (const { correct, kind } of answers) {
-    if (!passed && kind === "synthetic") {
-      synthetic.push(correct);
-      passed = correctInARow(synthetic) >= SYNTHETIC_STREAK;
-    } else if (passed && kind === "real") {
-      real.push(correct);
+  const results = TRAINING_KINDS.map((): boolean[] => []);
+  const firstUnpassed = (from: number) => {
+    let index = from;
+    while (index < TRAINING_KINDS.length && !phasesWithImages.has(TRAINING_KINDS[index] as string)) {
+      index += 1;
     }
-  }
-  const realStage = stage(real, REAL_STREAK);
-  return {
-    answered: answers.length,
-    synthetic: { ...stage(synthetic, SYNTHETIC_STREAK), passed },
-    real: realStage,
-    passes: passed && realStage.needed === 0,
+    return index;
   };
+
+  let current = firstUnpassed(0);
+  for (const { correct, kind } of answers) {
+    if (kind !== TRAINING_KINDS[current]) continue;
+    const phase = results[current] as boolean[];
+    phase.push(correct);
+    if (correctInARow(phase) >= STREAK) current = firstUnpassed(current + 1);
+  }
+
+  const phases = TRAINING_KINDS.map((phase, index) => {
+    const phaseResults = results[index] as boolean[];
+    const passed = index < current;
+    return {
+      phase,
+      passed,
+      recent: phaseResults.slice(-STREAK),
+      length: STREAK,
+      needed: passed ? 0 : STREAK - correctInARow(phaseResults),
+    };
+  });
+  return { answered: answers.length, phases, passes: current === TRAINING_KINDS.length };
 }
 
 async function summarize(user: Id, scriptClass: ScriptClass) {
-  const [answers, hasSynthetic] = await Promise.all([
+  const [answers, phasesWithImages] = await Promise.all([
     TrainingAttempt.find({ user, scriptClass }, "correct kind").sort({ createdAt: 1, _id: 1 }).lean(),
-    TrainingItem.exists({ scriptClass, kind: "synthetic", active: { $ne: false } }),
+    TrainingItem.distinct("kind", { scriptClass, active: { $ne: false } }),
   ]);
-  return summarizeAnswers(answers, Boolean(hasSynthetic));
+  return summarizeAnswers(answers, new Set(phasesWithImages));
 }
 
 export async function getProgress(user: Id, scriptClass: ScriptClass): Promise<Progress> {
@@ -104,11 +112,15 @@ export async function qualifiedClasses(user: Id): Promise<ScriptClass[]> {
   return Qualification.distinct("scriptClass", { user });
 }
 
-/** The kind of image a mode draws from now, or null if practice is not open yet. */
-async function poolFor(user: Id, scriptClass: ScriptClass, mode: Mode): Promise<Kind | null> {
-  const { synthetic } = await summarize(user, scriptClass);
-  if (mode === "practice") return synthetic.passed ? "synthetic" : null;
-  return synthetic.passed ? "real" : "synthetic";
+/**
+ * The kind of image a mode draws from now, or null if practice is not open yet. Once every phase is
+ * passed, the quiz keeps going with the last one.
+ */
+async function poolFor(user: Id, scriptClass: ScriptClass, mode: Mode): Promise<TrainingKind | null> {
+  const { phases } = await summarize(user, scriptClass);
+  const [synthetic] = phases;
+  if (mode === "practice") return synthetic?.passed ? "synthetic" : null;
+  return (phases.find(({ passed }) => !passed) ?? phases.at(-1))?.phase ?? null;
 }
 
 async function sampleItem(match: object): Promise<Id | null> {
@@ -121,12 +133,12 @@ async function sampleItem(match: object): Promise<Id | null> {
 }
 
 /** Chooses an image the user has not answered. Once every image has been answered, repeats are allowed. */
-async function chooseItem(user: Id, scriptClass: ScriptClass, pool: Kind, random = Math.random) {
+async function chooseItem(user: Id, scriptClass: ScriptClass, pool: TrainingKind, random = Math.random) {
   const answered = await TrainingAttempt.distinct("item", { user, scriptClass });
   const available = { scriptClass, kind: pool, active: { $ne: false } };
   const unseen = { ...available, _id: { $nin: answered } };
   const preferred =
-    pool === "real" ? { category: random() < NON_MANCHU_SHARE ? { $ne: "manchu" } : "manchu" } : {};
+    pool === "synthetic" ? {} : { category: random() < NON_MANCHU_SHARE ? { $ne: "manchu" } : "manchu" };
   return (
     (await sampleItem({ ...unseen, ...preferred })) ??
     (await sampleItem(unseen)) ??

@@ -2,74 +2,70 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { datasetWordToAbkai } from "../src/scripts/import-training.ts";
-import { REAL_STREAK, summarizeAnswers, SYNTHETIC_STREAK } from "../src/training.ts";
+import { STREAK, summarizeAnswers } from "../src/training.ts";
 
 /** Answers of one kind, oldest first. */
 const answers = (kind: string, count: number, correct = true) =>
   Array.from({ length: count }, () => ({ correct, kind }));
-const passFirstStage = () => answers("synthetic", SYNTHETIC_STREAK);
+const ALL = new Set(["synthetic", "printed", "manuscript"]);
+const passed = (summary: ReturnType<typeof summarizeAnswers>) => summary.phases.map((phase) => phase.passed);
 
-test("generated images in a row pass the first stage", () => {
-  const before = summarizeAnswers(answers("synthetic", SYNTHETIC_STREAK - 1), true);
-  assert.equal(before.synthetic.passed, false);
-  assert.equal(before.synthetic.needed, 1);
-  assert.equal(summarizeAnswers(passFirstStage(), true).synthetic.passed, true);
-});
+test("each phase needs its images correct in a row, in order", () => {
+  const before = summarizeAnswers(answers("synthetic", STREAK - 1), ALL);
+  assert.deepEqual(passed(before), [false, false, false]);
+  assert.equal(before.phases[0]?.needed, 1);
 
-test("a wrong generated image restarts the first stage", () => {
-  const summary = summarizeAnswers(
-    [...answers("synthetic", 9), ...answers("synthetic", 1, false), ...answers("synthetic", 3)],
-    true,
+  const all = summarizeAnswers(
+    [...answers("synthetic", STREAK), ...answers("printed", STREAK), ...answers("manuscript", STREAK)],
+    ALL,
   );
-  assert.equal(summary.synthetic.passed, false);
-  assert.equal(summary.synthetic.needed, SYNTHETIC_STREAK - 3);
+  assert.deepEqual(passed(all), [true, true, true]);
+  assert.equal(all.passes, true);
 });
 
-test("real scans in a row after the first stage qualify", () => {
-  const short = summarizeAnswers([...passFirstStage(), ...answers("real", REAL_STREAK - 1)], true);
-  assert.equal(short.passes, false);
-  assert.equal(short.real.needed, 1);
-  assert.equal(summarizeAnswers([...passFirstStage(), ...answers("real", REAL_STREAK)], true).passes, true);
-});
-
-test("real scans from before the first stage is passed do not count", () => {
-  const summary = summarizeAnswers([...answers("real", REAL_STREAK), ...passFirstStage()], true);
-  assert.equal(summary.passes, false);
-  assert.deepEqual(summary.real.recent, []);
-});
-
-test("a wrong real scan restarts the second stage", () => {
+test("a wrong answer restarts only the current phase", () => {
   const summary = summarizeAnswers(
-    [...passFirstStage(), ...answers("real", REAL_STREAK - 1), ...answers("real", 1, false)],
-    true,
+    [...answers("synthetic", STREAK), ...answers("printed", 5), ...answers("printed", 1, false), ...answers("printed", 2)],
+    ALL,
   );
-  assert.equal(summary.real.needed, REAL_STREAK);
+  assert.deepEqual(passed(summary), [true, false, false]);
+  assert.equal(summary.phases[1]?.needed, STREAK - 2);
 });
 
-test("practice after the first stage changes nothing", () => {
+test("answers only count towards the phase the user was in", () => {
+  // Printed answers before the synthetic phase, and old "real" answers, count for nothing.
+  const summary = summarizeAnswers(
+    [...answers("printed", STREAK), ...answers("real", STREAK), ...answers("synthetic", STREAK)],
+    ALL,
+  );
+  assert.deepEqual(passed(summary), [true, false, false]);
+  assert.deepEqual(summary.phases[1]?.recent, []);
+});
+
+test("practice after the synthetic phase changes nothing", () => {
   const summary = summarizeAnswers(
     [
-      ...passFirstStage(),
-      ...answers("real", 5),
+      ...answers("synthetic", STREAK),
+      ...answers("printed", 3),
       ...answers("synthetic", 2, false),
-      ...answers("real", REAL_STREAK - 5),
+      ...answers("printed", STREAK - 3),
     ],
-    true,
+    ALL,
   );
-  assert.equal(summary.synthetic.passed, true);
+  assert.deepEqual(passed(summary), [true, true, false]);
+});
+
+test("a phase without images is passed automatically", () => {
+  const summary = summarizeAnswers(answers("printed", STREAK), new Set(["printed"]));
   assert.equal(summary.passes, true);
 });
 
-test("a class without generated images skips the first stage", () => {
-  assert.equal(summarizeAnswers(answers("real", REAL_STREAK), false).passes, true);
-});
-
-test("reports each answer in a stage, oldest first", () => {
+test("reports each answer in a phase, oldest first", () => {
   const summary = summarizeAnswers(
     [...answers("synthetic", 2), ...answers("synthetic", 1, false), ...answers("synthetic", 1)],
-    true,
+    ALL,
   );
-  assert.deepEqual(summary.synthetic.recent, [true, true, false, true]);
+  assert.deepEqual(summary.phases[0]?.recent, [true, true, false, true]);
 });
 
 test("converts the dataset's spelling to Abkai", () => {

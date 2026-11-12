@@ -9,10 +9,10 @@ Usage:
 
 Output goes to data/training/: images, and items.jsonl with one record per image.
 
-The bank mixes three kinds of image:
-  - printed words from Sun et al. (2026), with one photo per word
-  - Chinese crops from a volume's Chinese columns, as images that are not Manchu
-  - synthetic words rendered from a lexicon, which can be made in any number
+The bank mixes three kinds of image, one for each phase of the quiz:
+  - synthetic: words rendered from a lexicon, which can be made in any number
+  - printed: words from Sun et al. (2026), with one photo per word
+  - manuscript: Chinese crops from a manuscript volume's Chinese columns, as images that are not Manchu
 
 Every Chinese crop was reviewed by eye, and pipeline/chinese_exclusions.txt lists the ones rejected.
 """
@@ -54,7 +54,7 @@ def add_sun_photos(photos: Path, rng: random.Random) -> list[dict]:
         items.append(
             {
                 "file": f"sun/{name}",
-                "kind": "real",
+                "kind": "printed",
                 "category": "manchu",
                 "datasetWord": folder.name,
                 "source": SUN_SOURCE,
@@ -86,7 +86,7 @@ def add_chinese_crops(volume: str, rng: random.Random) -> list[dict]:
         items.append(
             {
                 "file": f"chinese/{word['file']}",
-                "kind": "real",
+                "kind": "manuscript",
                 "category": "chinese",
                 "source": f"Harvard-Yenching Library, URN-3:FHCL:{volume}",
             }

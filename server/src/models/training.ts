@@ -5,10 +5,14 @@ import { appendOnly } from "./append-only.ts";
 import { CATEGORIES } from "./labels.ts";
 import { SCRIPT_TYPES } from "./sources.ts";
 
+/** The quiz phases, in order. Each image belongs to one. */
+export const TRAINING_KINDS = ["synthetic", "printed", "manuscript"] as const;
+export type TrainingKind = (typeof TRAINING_KINDS)[number];
+
 /** A quiz image. These are separate from hidden checks, and are never used as checks. */
 const trainingItemSchema = new Schema({
   scriptClass: { type: String, enum: SCRIPT_TYPES, required: true, index: true },
-  kind: { type: String, enum: ["real", "synthetic"], required: true },
+  kind: { type: String, enum: TRAINING_KINDS, required: true },
   category: { type: String, enum: CATEGORIES, required: true },
   /** The answer, required for Manchu images. */
   abkai: String,
@@ -26,7 +30,8 @@ const trainingAttemptSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: "User", required: true },
   item: { type: Schema.Types.ObjectId, ref: "TrainingItem", required: true },
   scriptClass: { type: String, enum: SCRIPT_TYPES, required: true },
-  kind: { type: String, enum: ["real", "synthetic"], required: true },
+  /** The image's kind when answered. Answers from before the quiz had phases say "real". */
+  kind: { type: String, enum: [...TRAINING_KINDS, "real"], required: true },
   category: { type: String, enum: CATEGORIES, required: true },
   abkai: String,
   manchu: { type: String, match: STORED_MANCHU },

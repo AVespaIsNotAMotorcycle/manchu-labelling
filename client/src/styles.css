@@ -179,6 +179,95 @@ button.link:focus:enabled {
   margin-bottom: 1rem;
 }
 
+/* Numbered steps joined by lines, with a check once a phase is passed. */
+.phases {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  max-width: 30rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.phases li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* The line into each phase, from the centre of the one before. */
+.phases li + li::before {
+  content: "";
+  position: absolute;
+  top: calc(1.125rem - 1.5px);
+  right: 50%;
+  z-index: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--line);
+}
+
+.phase-number {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  font-weight: 700;
+}
+
+.phase-number svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.phases li.active {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.phases li.active .phase-number {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--surface);
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.15);
+}
+
+.phases li.done {
+  color: var(--right);
+}
+
+.phases li.done::before,
+.phases li.done .phase-number {
+  border-color: var(--right);
+  background: var(--right);
+  color: var(--surface);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .progress p {
   margin: 0 0 0.25rem;
 }

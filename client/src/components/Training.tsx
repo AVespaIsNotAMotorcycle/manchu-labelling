@@ -6,6 +6,7 @@ import {
   getQuizItem,
   type QuizFeedback,
   type QuizItem,
+  type QuizPhase,
   type QuizProgress,
 } from "../api.ts";
 import { AbkaiField } from "./AbkaiField.tsx";
@@ -22,19 +23,25 @@ function Introduction({ onStart }: { onStart: () => void }) {
         shows. If it is Manchu, type exactly what is written, using Abkai. The letter reference and its
         links are there to help, so use them whenever you like.
       </p>
-      <p>You will see the answer after each image. The quiz has two steps:</p>
+      <p>
+        You will see the answer after each image. The quiz has three phases, and each one needs{" "}
+        <strong>8 correct answers in a row</strong>:
+      </p>
       <ol>
         <li>
-          Answer <strong>10 generated images in a row</strong> correctly. These are words rendered in
-          Manchu fonts.
+          <strong>Synthetic:</strong> words rendered in Manchu fonts.
         </li>
         <li>
-          Then answer <strong>15 real scans in a row</strong> correctly. Some of these are not Manchu.
+          <strong>Printed:</strong> photos of printed Manchu words.
+        </li>
+        <li>
+          <strong>Manuscript:</strong> images from handwritten volumes. Some of these are not Manchu.
         </li>
       </ol>
       <p>
-        Once you finish the first step, you will not need to repeat it. You can still go back and
-        practise on generated images whenever you like, and those answers will not affect your progress.
+        Once you pass a phase, you will not need to repeat it. After the synthetic phase, you can go back
+        and practise on synthetic images whenever you like, and those answers will not affect your
+        progress.
       </p>
       <h2>Hidden checks</h2>
       <p>
@@ -53,14 +60,51 @@ function Introduction({ onStart }: { onStart: () => void }) {
   );
 }
 
+const CHECK = "M3 8.5 6.5 12 13 4.5";
+const CROSS = "M4 4 12 12M12 4 4 12";
+
 function AnswerMark({ correct }: { correct: boolean | undefined }) {
   if (correct === undefined) return <li className="mark" aria-label="Not answered yet" />;
   return (
     <li className={correct ? "mark right" : "mark wrong"}>
       <svg viewBox="0 0 16 16" role="img" aria-label={correct ? "Correct" : "Wrong"}>
-        <path d={correct ? "M3 8.5 6.5 12 13 4.5" : "M4 4 12 12M12 4 4 12"} />
+        <path d={correct ? CHECK : CROSS} />
       </svg>
     </li>
+  );
+}
+
+const PHASE_NAMES: Record<string, string> = {
+  synthetic: "Synthetic",
+  printed: "Printed",
+  manuscript: "Manuscript",
+};
+
+function PhaseSteps({ phases, current }: { phases: QuizPhase[]; current: number }) {
+  return (
+    <ol className="phases" aria-label="Quiz phases">
+      {phases.map(({ phase, passed }, index) => (
+        <li
+          key={phase}
+          className={passed ? "done" : index === current ? "active" : undefined}
+          aria-current={index === current ? "step" : undefined}
+        >
+          <span className="phase-number" aria-hidden="true">
+            {passed ? (
+              <svg viewBox="0 0 16 16">
+                <path d={CHECK} />
+              </svg>
+            ) : (
+              index + 1
+            )}
+          </span>
+          <span className="phase-name">
+            {PHASE_NAMES[phase] ?? phase}
+            {passed && <span className="visually-hidden"> (passed)</span>}
+          </span>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -70,42 +114,51 @@ function ProgressMeter(props: {
   onPracticeChange: (practice: boolean) => void;
 }) {
   const { progress, practice, onPracticeChange } = props;
-  const { synthetic, real } = progress;
+  const { phases } = progress;
+  const current = phases.findIndex(({ passed }) => !passed);
+  const phase = phases[current];
+  const next = phases[current + 1];
 
+  let detail;
   if (practice) {
-    return (
-      <div className="progress">
+    detail = (
+      <>
         <p>
-          <strong>Practice with generated images.</strong> These answers do not affect your progress.
+          <strong>Practice with synthetic images.</strong> These answers do not affect your progress.
         </p>
         <button type="button" onClick={() => onPracticeChange(false)}>
           Back to the quiz
         </button>
-      </div>
+      </>
+    );
+  } else if (!phase) {
+    detail = <p><strong>You have passed every phase.</strong></p>;
+  } else {
+    const goal = next ? `to move on to ${PHASE_NAMES[next.phase]?.toLowerCase()}` : "to qualify";
+    const slots = Array.from({ length: phase.length }, (_, index) => phase.recent[index]);
+    detail = (
+      <>
+        <p>
+          <strong>
+            {phase.needed} more correct in a row {goal}
+          </strong>
+        </p>
+        <ol className="marks" aria-label={`Your last ${phase.length} answers in this phase, oldest first`}>
+          {slots.map((correct, index) => (
+            <AnswerMark key={index} correct={correct} />
+          ))}
+        </ol>
+      </>
     );
   }
 
-  const stage = synthetic.passed ? real : synthetic;
-  const goal = synthetic.passed ? "to qualify" : "to move on to real scans";
-  const slots = Array.from({ length: stage.length }, (_, index) => stage.recent[index]);
   return (
     <div className="progress">
-      <p>
-        {synthetic.passed ? "Step 2 of 2: real scans" : "Step 1 of 2: generated images"} ·{" "}
-        <strong>
-          {stage.needed === 0
-            ? `${stage.length} correct in a row`
-            : `${stage.needed} more correct in a row ${goal}`}
-        </strong>
-      </p>
-      <ol className="marks" aria-label={`Your last ${stage.length} answers in this step, oldest first`}>
-        {slots.map((correct, index) => (
-          <AnswerMark key={index} correct={correct} />
-        ))}
-      </ol>
-      {synthetic.passed && (
+      <PhaseSteps phases={phases} current={current} />
+      {detail}
+      {!practice && phases[0]?.passed && (
         <button type="button" onClick={() => onPracticeChange(true)}>
-          Practise with generated images
+          Practise with synthetic images
         </button>
       )}
     </div>

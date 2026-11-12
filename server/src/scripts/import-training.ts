@@ -16,13 +16,13 @@ import mongoose from "mongoose";
 
 import { connectDatabase } from "../db.ts";
 import { isScriptClass, SCRIPT_TYPES } from "../models/sources.ts";
-import { TrainingItem } from "../models/training.ts";
+import { TrainingItem, type TrainingKind } from "../models/training.ts";
 
 const ROOT = resolve(import.meta.dirname, "../../..");
 
 interface BankItem {
   file: string;
-  kind: "real" | "synthetic";
+  kind: TrainingKind;
   category: "manchu" | "chinese";
   datasetWord?: string;
   manchu?: string;

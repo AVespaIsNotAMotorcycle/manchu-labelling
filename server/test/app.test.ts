@@ -17,6 +17,7 @@ import { Page, Volume } from "../src/models/sources.ts";
 import { Qualification, TrainingAttempt, TrainingItem } from "../src/models/training.ts";
 import { User } from "../src/models/users.ts";
 import { hashPassword } from "../src/passwords.ts";
+import { splitRealTraining } from "../src/scripts/split-real-training.ts";
 
 const PASSWORD = "Correct horse battery 1";
 const CROP_KEY = "11111111-1111-4111-8111-111111111111.jpg";
@@ -304,17 +305,23 @@ test("the response is identical for an image with a known label", async () => {
   assert.equal(await (await withLabel.request("/api/labelling/next")).text(), before);
 });
 
-async function makeBank(items: number) {
+/**
+ * Makes quiz images for each phase, like the real bank: Manchu synthetic and printed words, and Chinese
+ * manuscript crops.
+ */
+async function makeBank(perPhase: number, phases = ["synthetic", "printed", "manuscript"]) {
   await TrainingItem.insertMany(
-    Array.from({ length: items }, (_, index) => ({
-      scriptClass: "regular",
-      kind: index % 2 === 0 ? "real" : "synthetic",
-      category: "manchu",
-      abkai: "manju",
-      manchu: "ᠮᠠᠨᠵᡠ",
-      imageKey: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}.png`,
-      source: "test",
-    })),
+    phases.flatMap((kind, phase) =>
+      Array.from({ length: perPhase }, (_, index) => ({
+        scriptClass: "regular",
+        kind,
+        ...(kind === "manuscript"
+          ? { category: "chinese" }
+          : { category: "manchu", abkai: "manju", manchu: "ᠮᠠᠨᠵᡠ" }),
+        imageKey: `00000000-0000-4000-8000-${String(phase * 1000 + index).padStart(12, "0")}.png`,
+        source: "test",
+      })),
+    ),
   );
 }
 
@@ -364,8 +371,9 @@ test("rejects quiz answers that are not valid", async () => {
   assert.equal((await client.request("/api/training/unknown/next")).status, 404);
 });
 
-const RIGHT = { category: "manchu", transcription: "manju" };
-const WRONG = { category: "chinese" };
+const MANCHU = { category: "manchu", transcription: "manju" };
+const CHINESE = { category: "chinese" };
+const WRONG = { category: "bad_crop" };
 
 /** Answers the waiting image in the quiz or in practice, and returns the result. */
 async function answerNext(client: Client, body: object, path = "") {
@@ -374,71 +382,104 @@ async function answerNext(client: Client, body: object, path = "") {
   return response.json();
 }
 
-test("ten generated images and then fifteen real scans qualify a user", async () => {
-  await makeBank(60);
+async function passPhase(client: Client, body: object) {
+  let progress;
+  for (let count = 0; count < 8; count += 1) ({ progress } = await answerNext(client, body));
+  return progress;
+}
+
+test("eight in a row in each phase, in order, qualify a user", async () => {
+  await makeBank(20);
   const client = await loggedIn("person@example.com", {}, false);
-  for (let count = 1; count <= 10; count += 1) {
-    const { progress } = await answerNext(client, RIGHT);
-    assert.equal(progress.synthetic.passed, count === 10);
+  for (let count = 1; count <= 8; count += 1) {
+    const { progress } = await answerNext(client, MANCHU);
+    assert.equal(progress.phases[0].needed, 8 - count);
+    assert.equal(progress.phases[0].passed, count === 8);
   }
-  for (let count = 1; count <= 15; count += 1) {
-    const { progress } = await answerNext(client, RIGHT);
-    assert.equal(progress.real.needed, 15 - count);
-    assert.equal(progress.qualified, count === 15);
+  assert.equal((await passPhase(client, MANCHU)).phases[1].passed, true);
+  for (let count = 1; count <= 8; count += 1) {
+    const { progress } = await answerNext(client, CHINESE);
+    assert.equal(progress.qualified, count === 8);
   }
   const kinds = (await TrainingAttempt.find().sort({ createdAt: 1, _id: 1 })).map(({ kind }) => kind);
-  assert.deepEqual(kinds, [...Array(10).fill("synthetic"), ...Array(15).fill("real")]);
+  assert.deepEqual(kinds, [
+    ...Array(8).fill("synthetic"),
+    ...Array(8).fill("printed"),
+    ...Array(8).fill("manuscript"),
+  ]);
   assert.equal((await client.request("/api/labelling/next")).status, 200);
 });
 
-test("a wrong real scan restarts the second stage but not the first", async () => {
-  await makeBank(80);
+test("a wrong answer restarts its own phase but not earlier ones", async () => {
+  await makeBank(30);
   const client = await loggedIn("person@example.com", {}, false);
-  for (let count = 0; count < 10; count += 1) await answerNext(client, RIGHT);
+  await passPhase(client, MANCHU);
+  for (let count = 0; count < 7; count += 1) await answerNext(client, MANCHU);
   const { progress } = await answerNext(client, WRONG);
-  assert.equal(progress.synthetic.passed, true);
-  assert.equal(progress.real.needed, 15);
-  for (let count = 0; count < 14; count += 1) await answerNext(client, RIGHT);
-  assert.equal((await answerNext(client, RIGHT)).progress.qualified, true);
+  assert.equal(progress.phases[0].passed, true);
+  assert.equal(progress.phases[1].needed, 8);
+  assert.equal((await passPhase(client, MANCHU)).phases[1].passed, true);
 });
 
-test("practice opens after the first stage and does not affect progress", async () => {
-  await makeBank(60);
+test("a phase without images is passed automatically", async () => {
+  await makeBank(20, ["synthetic", "printed"]);
+  const client = await loggedIn("person@example.com", {}, false);
+  await passPhase(client, MANCHU);
+  const progress = await passPhase(client, MANCHU);
+  assert.equal(progress.phases[2].passed, true);
+  assert.equal(progress.qualified, true);
+});
+
+test("practice opens after the synthetic phase and does not affect progress", async () => {
+  await makeBank(20);
   const client = await loggedIn("person@example.com", {}, false);
   assert.equal((await client.request("/api/training/regular/practice/next")).status, 409);
-  for (let count = 0; count < 10; count += 1) await answerNext(client, RIGHT);
-  await answerNext(client, RIGHT);
+  await passPhase(client, MANCHU);
+  await answerNext(client, MANCHU);
 
   const { progress } = await answerNext(client, WRONG, "/practice");
-  assert.equal(progress.synthetic.passed, true);
-  assert.equal(progress.real.needed, 14);
+  assert.equal(progress.phases[0].passed, true);
+  assert.equal(progress.phases[1].needed, 7);
   const last = await TrainingAttempt.findOne().sort({ createdAt: -1, _id: -1 });
   assert.equal(last?.kind, "synthetic");
 });
 
 test("practice cannot be used to skip a quiz image", async () => {
-  await makeBank(60);
+  await makeBank(20);
   const client = await loggedIn("person@example.com", {}, false);
-  for (let count = 0; count < 10; count += 1) await answerNext(client, RIGHT);
+  await passPhase(client, MANCHU);
   const next = (path = "") => client.request(`/api/training/regular${path}/next`).then((r) => r.json());
   const waiting = (await next()).item.id;
-  await answerNext(client, RIGHT, "/practice");
+  await answerNext(client, MANCHU, "/practice");
   assert.equal((await next()).item.id, waiting);
 });
 
 test("the image never repeats until the bank runs out", async () => {
-  await makeBank(10);
+  await makeBank(5);
   const client = await loggedIn("person@example.com", {}, false);
   const seen = new Set();
-  // Half of the bank is generated images, which are all the first stage uses.
   for (let count = 0; count < 5; count += 1) {
     const { item } = await (await client.request("/api/training/regular/next")).json();
     seen.add(item.id);
-    await answerQuiz(client, { category: "bad_crop" });
+    await answerQuiz(client, WRONG);
   }
   assert.equal(seen.size, 5);
   const { item } = await (await client.request("/api/training/regular/next")).json();
   assert.ok(item);
+});
+
+test("moves quiz images from before phases into printed and manuscript", async () => {
+  const items = TrainingItem.collection;
+  const base = { scriptClass: "regular", source: "test", active: true };
+  await items.insertMany([
+    { ...base, kind: "real", category: "manchu", abkai: "manju", imageKey: "a.png" },
+    { ...base, kind: "real", category: "chinese", imageKey: "b.png" },
+    { ...base, kind: "synthetic", category: "manchu", abkai: "manju", imageKey: "c.png" },
+  ]);
+  assert.deepEqual(await splitRealTraining(), { printed: 1, manuscript: 1 });
+  const kinds = (await items.find().sort({ imageKey: 1 }).toArray()).map(({ kind }) => kind);
+  assert.deepEqual(kinds, ["printed", "manuscript", "synthetic"]);
+  assert.deepEqual(await splitRealTraining(), { printed: 0, manuscript: 0 });
 });
 
 test("reports which classes have quizzes", async () => {

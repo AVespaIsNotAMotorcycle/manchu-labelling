@@ -146,8 +146,8 @@ Users complete this section before they can do real work:
 
 - **Lessons** teach the script (planned after the first release).
 - **Reference:** the letter-form reference is available throughout.
-- **Quiz:** users first answer **10 generated images in a row** correctly, then **15 real scans in a
-  row**, with feedback after each answer.
+- **Quiz:** users pass three phases in order, **synthetic, printed, and manuscript**, each with **8
+  correct answers in a row**, and get feedback after each answer.
 - **Disclosure:** users are told that hidden checks exist and that they can review and dispute past
   test images.
 
@@ -155,40 +155,43 @@ Users complete this section before they can do real work:
 
 - Qualification is per script class, using the same `script` values as volumes. A user only receives
   images from volumes in classes they have qualified for.
-- The quiz covers category as well as transcription, so about 10% of real scans are not Manchu.
+- Each quiz image belongs to one phase, recorded as its `kind`: `synthetic`, `printed`, or
+  `manuscript`. Each phase uses only its own images.
+- The quiz covers category as well as transcription. About 10% of images in the printed and manuscript
+  phases are not Manchu when the phase has enough of them.
 - Transcriptions must match exactly. The intended word field is not scored.
-- The first step uses only generated images. Once passed it is never undone, and only real scans
-  answered after it count towards the second step. A class without generated images skips it.
-- After the first step, users can practise on generated images whenever they like. Practice answers
-  are recorded but do not affect progress, and practice has its own waiting image so that it cannot
-  skip a quiz image.
+- Passing a phase is never undone. An answer only counts towards the phase the user was in when they
+  gave it. A phase with no images passes automatically.
+- After the synthetic phase, users can practise on synthetic images whenever they like. Practice
+  answers are recorded but do not affect progress, and practice has its own waiting image so that it
+  cannot skip a quiz image.
 - Images do not repeat until a user has answered them all, and reloading cannot skip an image.
 - Quiz images are a separate collection from hidden checks and are never used as checks.
-- The quiz shows whether each recent answer in the current step was right, in order, and how many more
-  correct answers in a row the user needs.
+- The quiz shows the three phases as numbered steps. Below them, it shows whether each recent answer in
+  the current phase was right, in order, and how many more correct answers in a row the user needs.
+- Answers from before the quiz had phases say `real` and count towards no phase.
 
 ### The `regular` bank
 
-| Images | Count | Source |
-| --- | --- | --- |
-| Printed Manchu words | 2,428 | Sun et al. (2026), one photo per word, CC BY 4.0 |
-| Synthetic Manchu words | 600 | Rendered from a lexicon in the 12 local fonts |
-| Chinese characters | 64 | Chinese columns of the trial volume, each reviewed by eye |
+| Phase | Images | Count | Source |
+| --- | --- | --- | --- |
+| Synthetic | Synthetic Manchu words | 600 | Rendered from a lexicon in the 12 local fonts |
+| Printed | Printed Manchu words | 2,428 | Sun et al. (2026), one photo per word, CC BY 4.0 |
+| Manuscript | Chinese characters | 64 | Chinese columns of the trial volume, each reviewed by eye |
 
-- **Manuscript gap:** the bank has no Manchu manuscript images, although the labelling queue is
-  manuscripts. Passing shows a user can read print. Manchu manuscript items must be added once
-  Manjurists can supply answers.
+- **Manuscript gap:** the manuscript phase has no Manchu images yet, so it only tests the category
+  question, although the labelling queue is manuscripts. Passing shows a user can read print. Manchu
+  manuscript items must be added once Manjurists can supply answers.
 - Synthetic images are rendered from all-rights-reserved fonts, so they stay out of any publication
   until the fonts' terms are known.
 
-Requiring 15 real scans in a row means persistence can eventually beat skill, and the image bank must be
-large:
+Requiring 8 in a row means persistence can eventually beat skill, and the image bank must be large:
 
-| Per-image accuracy | Expected real scans to reach 15 in a row |
+| Per-image accuracy | Expected images to reach 8 in a row, in each phase |
 | --- | --- |
-| 95% | about 23 |
-| 90% | about 39 |
-| 80% | about 140 |
+| 95% | about 10 |
+| 90% | about 13 |
+| 80% | about 25 |
 
 **[Proposed]** Each script class needs at least 300 real images at launch.
 
@@ -225,8 +228,8 @@ with the quality control milestone, so the text must be true before non-test use
 Passing the quiz is not permanent. If a user does poorly on many hidden checks in a row, they lose
 qualification for that script class and must pass the quiz again before labelling it.
 
-- The quiz stays at 15 real scans in a row, because users should be very good at this.
-- The whole quiz restarts when qualification is lost, including the generated images. Earlier answers do
+- The quiz stays at 8 in a row for each phase.
+- The whole quiz restarts when qualification is lost, including the synthetic phase. Earlier answers do
   not count, or a returning user would pass immediately.
 - Quiz images already answered are not repeated until the bank runs out.
 - Existing labels are kept, as all labels are. Trust still decides whether they count.

@@ -26,8 +26,10 @@ export interface Label {
   confidence: { category: string; transcription: string; style: string };
 }
 
-export interface QuizStage {
-  /** Whether each of the latest answers in this stage was correct, oldest first. */
+export interface QuizPhase {
+  phase: string;
+  passed: boolean;
+  /** Whether each of the latest answers in this phase was correct, oldest first. */
   recent: boolean[];
   length: number;
   needed: number;
@@ -35,8 +37,7 @@ export interface QuizStage {
 
 export interface QuizProgress {
   answered: number;
-  synthetic: QuizStage & { passed: boolean };
-  real: QuizStage;
+  phases: QuizPhase[];
   qualified: boolean;
 }
 
