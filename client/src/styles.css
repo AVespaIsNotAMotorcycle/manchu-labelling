@@ -367,7 +367,7 @@ dd {
   }
 }
 
-/* Wider still, and the links fit beside those two columns as well. */
+/* Wider still, and the table has more room on big screens. */
 @media (min-width: 103rem) {
   .workspace {
     --reference-default-width: 46.5rem;
@@ -601,18 +601,6 @@ legend {
   margin: 0;
   padding-left: 1.1rem;
   font-size: 0.9rem;
-}
-
-/* The links move beside the table once it keeps two columns of letters without their room. */
-@container reference (min-width: 43rem) {
-  .reference-contents {
-    grid-template-columns: minmax(0, 1fr) 10rem;
-  }
-
-  .resources {
-    grid-column: 2;
-    grid-row: 1;
-  }
 }
 
 /* Separate buttons, so that they wrap cleanly in a narrow panel. */

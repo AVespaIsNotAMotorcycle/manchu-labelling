@@ -233,6 +233,7 @@ export function Reference() {
       >
         <h2>Letter forms</h2>
         <div className="reference-contents">
+          <LetterTabs />
           <ul className="resources">
             <li>
               <a
@@ -253,7 +254,6 @@ export function Reference() {
               </a>
             </li>
           </ul>
-          <LetterTabs />
         </div>
       </aside>
     </>
