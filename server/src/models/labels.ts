@@ -7,7 +7,6 @@ import { PRODUCTION_TYPES, SCRIPT_TYPES } from "./sources.ts";
 export const CATEGORIES = [
   "manchu",
   "chinese",
-  "mongolian",
   "other_script",
   "non_text",
   "illegible",

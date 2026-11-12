@@ -78,7 +78,7 @@ reader so far is the owner's identification of two shapes.
 
 | Field | Values | Notes |
 | --- | --- | --- |
-| Category | `manchu`, `chinese`, `mongolian`, `other_script`, `non_text`, `illegible`, `bad_crop` | Required |
+| Category | `manchu`, `chinese`, `other_script`, `non_text`, `illegible`, `bad_crop` | Required. Mongolian script is `other_script` |
 | Transcription | Manchu Unicode | Required for `manchu`. Typed in Abkai and stored as Unicode |
 | Intended word | Manchu Unicode | Optional. Used when the written form differs from the word meant |
 | Production | Woodblock, movable type, manuscript, other | Set per volume, can be overridden per word |

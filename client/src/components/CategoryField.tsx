@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 export const CATEGORIES = [
   ["manchu", "Manchu"],
   ["chinese", "Chinese"],
-  ["mongolian", "Mongolian"],
   ["other_script", "Other script"],
   ["non_text", "Not text"],
   ["illegible", "Illegible"],
