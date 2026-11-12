@@ -382,9 +382,6 @@ dd {
   display: grid;
   grid-template-columns: minmax(0, auto) minmax(0, 1fr);
   gap: 2rem;
-  padding: 1rem;
-  border: 2px solid var(--text);
-  border-radius: var(--radius);
 }
 
 .comparison {
@@ -582,9 +579,6 @@ legend {
   max-width: max(19rem, calc(100vw - 24rem));
   max-height: calc(100vh - 5rem);
   overflow-y: auto;
-  padding: 1rem;
-  border: 2px solid var(--text);
-  border-radius: var(--radius);
 }
 
 .reference h2 {
@@ -657,7 +651,7 @@ legend {
 }
 
 /* The extra column for forms written alone only fits a narrow panel with smaller letters. */
-@container reference (max-width: 18.75rem) {
+@container reference (max-width: 20rem) {
   .reference .with-alone td {
     padding: 0.15rem;
   }
