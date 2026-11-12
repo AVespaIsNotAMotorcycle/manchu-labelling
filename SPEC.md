@@ -3,7 +3,7 @@
 A web app for crowdsourcing labels on word images from historical Manchu sources, and the design of
 the open dataset it produces.
 
-**Status:** draft, last updated 2026-11-11. Items marked **[Proposed]** are suggested defaults the
+**Status:** draft, last updated 2026-11-12. Items marked **[Proposed]** are suggested defaults the
 owner has not yet approved. Everything else is agreed. Unresolved questions are in
 [section 12](#12-open-questions).
 
@@ -319,6 +319,8 @@ answers ever being published:
   known label whose origin names the labelers' and admin's user IDs. Turned-down and disputed images
   stay held back, and are not checks.
 - Leaving held-back words out of releases comes with the export.
+- **To decide later:** whether an admin can undo a held-back decision. Decisions are append-only, so
+  undo would be a later decision that replaces the earlier one (open question 3).
 
 ## 8. Roles
 
@@ -457,3 +459,6 @@ Each milestone ends with a check-in.
    aligned to scans and confirmed by eye (section 3), starting with *Justan i bithe*. Who confirms them
    once there are more?
 2. **Hosting:** where do the app and database run in production?
+3. **Undoing a held-back decision:** a mistaken yes makes a wrong check, and a mistaken no loses a
+   check. Should admins be able to undo, and what happens to check results already graded against a
+   yes?
