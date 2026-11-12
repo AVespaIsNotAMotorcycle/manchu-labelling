@@ -46,12 +46,12 @@ const TABS = [
   {
     id: "consonants",
     name: "Consonants",
-    letters: forms("n ng k g h b p s x t d l m q j y r f w zh"),
+    letters: forms("n ng k g h b p s x t d l m q j y r f w"),
   },
   {
     id: "chinese",
     name: "Chinese transliteration",
-    letters: forms("k' g' h' c cy' z zy' r' sy' qy' jy' y'"),
+    letters: forms("k' g' h' c cy' z zy' r' sy' qy' zh jy' y'"),
   },
   {
     id: "combinations",
