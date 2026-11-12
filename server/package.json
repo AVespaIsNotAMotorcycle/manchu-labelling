@@ -12,7 +12,8 @@
     "import-training": "node src/scripts/import-training.ts",
     "split-real-training": "node src/scripts/split-real-training.ts",
     "import-known-labels": "node src/scripts/import-known-labels.ts",
-    "check-results": "node src/scripts/check-results.ts"
+    "check-results": "node src/scripts/check-results.ts",
+    "hold-back": "node src/scripts/hold-back.ts"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

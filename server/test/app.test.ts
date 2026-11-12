@@ -20,6 +20,7 @@ import { Qualification, TrainingAttempt, TrainingItem } from "../src/models/trai
 import { User } from "../src/models/users.ts";
 import { hashPassword } from "../src/passwords.ts";
 import { checkRate, pickNextImage } from "../src/queue.ts";
+import { holdBackUnchosen } from "../src/scripts/hold-back.ts";
 import { importKnownLabels } from "../src/scripts/import-known-labels.ts";
 import { splitRealTraining } from "../src/scripts/split-real-training.ts";
 
@@ -355,6 +356,49 @@ test("retired checks are not given, and known images never go to the ordinary qu
   for (const random of [always, never]) {
     assert.equal(String(await pickNextImage(user, ["regular"], random)), String(imageId));
   }
+});
+
+/** Gives an image submitted labels from new users. */
+async function labelBy(image: Types.ObjectId, count: number) {
+  const before = await Annotation.countDocuments({ wordImage: image });
+  for (let index = before; index < before + count; index += 1) {
+    const user = (await makeUser(`labeler${index}@example.com`))._id;
+    await Assignment.create({ user, wordImage: image, submittedAt: new Date() });
+    await Annotation.create({ wordImage: image, user, category: "chinese", converterVersion: 1 });
+  }
+}
+
+test("an ordinary image leaves the queue after 2 labels, a held-back one after 3", async () => {
+  const user = (await makeUser("person@example.com"))._id;
+  await labelBy(imageId, 2);
+  assert.equal(await pickNextImage(user, ["regular"], never), null);
+
+  const image = await WordImage.findById(imageId).orFail();
+  await WordInstance.updateOne({ _id: image.instance }, { heldBack: true });
+  assert.equal(String(await pickNextImage(user, ["regular"], never)), String(imageId));
+  await labelBy(imageId, 1);
+  assert.equal(await pickNextImage(user, ["regular"], never), null);
+});
+
+test("holds back words that have no choice yet, and leaves earlier choices alone", async () => {
+  const image = await WordImage.findById(imageId).orFail();
+  const other = await makeWord("66666666-6666-4666-8666-666666666666.jpg", image.page, { word: 1 });
+  await WordInstance.updateOne({ _id: other.instance }, { heldBack: false });
+  assert.deepEqual(await holdBackUnchosen(always), { chosen: 1, heldBack: 1 });
+  assert.equal((await WordInstance.findById(image.instance).orFail()).heldBack, true);
+  assert.equal((await WordInstance.findById(other.instance).orFail()).heldBack, false);
+  assert.deepEqual(await holdBackUnchosen(always), { chosen: 0, heldBack: 0 });
+});
+
+test("the response is identical for a held-back image", async () => {
+  const client = await loggedIn("first@example.com");
+  const before = await (await client.request("/api/labelling/next")).text();
+  const image = await WordImage.findById(imageId).orFail();
+  await WordInstance.updateOne({ _id: image.instance }, { heldBack: true });
+  const other = await loggedIn("second@example.com");
+  const user = await User.findOne({ email: "second@example.com" }).orFail();
+  await Assignment.create({ user: user._id, wordImage: imageId });
+  assert.equal(await (await other.request("/api/labelling/next")).text(), before);
 });
 
 test("checks are more frequent for a user's first 100 images", () => {

@@ -19,6 +19,11 @@ const wordInstanceSchema = new Schema({
   canonicalCrop: { type: Schema.Types.ObjectId, ref: "WordImage", required: true },
   /** Set when an admin rules that this instance should not be used, such as a merged crop. */
   retired: { type: Boolean, default: false },
+  /**
+   * Held back from releases, to become a hidden check once its answer is confirmed. Chosen at random
+   * when the word is imported, never from its labels. Only the server may know it.
+   */
+  heldBack: { type: Boolean },
 });
 
 const boxSchema = new Schema(

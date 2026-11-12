@@ -8,6 +8,8 @@ type Id = Types.ObjectId;
 
 /** Each image needs this many independent labels before it leaves the queue. */
 const LABELS_PER_IMAGE = 2;
+/** Held-back images need one more, since their answers may become hidden checks. */
+const LABELS_PER_HELD_BACK_IMAGE = 3;
 
 /** Images a user labels before the check rate drops, so that trust has a sample early on. */
 const EARLY_IMAGES = 100;
@@ -42,17 +44,23 @@ export async function pickNextImage(
 ) {
   const volumes = await Volume.find({ script: { $in: [...scriptClasses] } }, "_id").lean();
   const pages = (await Page.distinct("_id", { volume: { $in: volumes.map(({ _id }) => _id) } })) as Id[];
-  const [underReview, seen, labelled, known, finished] = await Promise.all([
+  const [underReview, seen, labelled, known, labelCounts, heldBack] = await Promise.all([
     instancesUnderReview(),
     Assignment.distinct("wordImage", { user }),
     Assignment.countDocuments({ user, submittedAt: { $ne: null } }),
     KnownLabel.find({}, "wordImage state").lean(),
-    Annotation.aggregate<{ _id: Id }>([
+    Annotation.aggregate<{ _id: Id; users: number }>([
       { $group: { _id: "$wordImage", users: { $addToSet: "$user" } } },
-      { $match: { [`users.${LABELS_PER_IMAGE - 1}`]: { $exists: true } } },
-      { $project: { _id: 1 } },
+      { $project: { users: { $size: "$users" } } },
+      { $match: { users: { $gte: LABELS_PER_IMAGE } } },
     ]),
+    WordInstance.distinct("canonicalCrop", { heldBack: true }) as Promise<Id[]>,
   ]);
+  const heldBackIds = new Set(heldBack.map(String));
+  const finished = labelCounts.filter(
+    ({ _id, users }) =>
+      users >= (heldBackIds.has(String(_id)) ? LABELS_PER_HELD_BACK_IMAGE : LABELS_PER_IMAGE),
+  );
 
   const eligible = (await WordInstance.distinct("canonicalCrop", {
     retired: { $ne: true },

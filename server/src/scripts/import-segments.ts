@@ -19,6 +19,7 @@ import { parseArgs } from "node:util";
 import mongoose, { Types } from "mongoose";
 
 import { connectDatabase } from "../db.ts";
+import { chooseHeldBack } from "../held-back.ts";
 import { matchCrop, type Box } from "../instances.ts";
 import { CropReview, SegmentationRun, WordImage, WordInstance } from "../models/crops.ts";
 import { Page, Volume, PRODUCTION_TYPES, SCRIPT_TYPES } from "../models/sources.ts";
@@ -190,7 +191,7 @@ async function main(): Promise<void> {
         crops: [...same.map(({ _id }) => _id), crop._id],
       });
     } else {
-      await WordInstance.create({ _id: instanceId, page, canonicalCrop: crop._id });
+      await WordInstance.create({ _id: instanceId, page, canonicalCrop: crop._id, heldBack: chooseHeldBack() });
     }
     if (conflicting.length > 0) {
       conflicts += 1;

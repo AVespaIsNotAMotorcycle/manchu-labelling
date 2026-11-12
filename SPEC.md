@@ -311,6 +311,9 @@ answers ever being published:
 - Held-back images are left out of releases while they are checks, and published once retired, like
   other checks. The datasheet says that about 15% of words are held back and how they were chosen.
 - Until it is published, the held-back set can also serve as a test split for OCR models.
+- As built: `heldBack` on word instances, set by `import-segments` and, for earlier volumes, once by
+  `hold-back`, with a cryptographic random source. The queue asks for 3 labels on held-back images.
+  Confirming answers and leaving held-back words out of releases come next.
 
 ## 8. Roles
 
