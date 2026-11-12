@@ -88,10 +88,13 @@ test("stored text allows letters and unreadable marks, but not variation selecto
 test("gives the positional forms of letters, sequences, and syllables", () => {
   assert.deepEqual(referenceForms("a"), {
     abkai: "a",
+    alone: "ᠠ",
     initial: "ᠠ\u200D",
     medial: "\u200Dᠠ\u200D",
     final: "\u200Dᠠ",
   });
+  assert.equal(referenceForms("i").alone, "ᡳ\u180B");
+  assert.equal(referenceForms("ai").alone, "ᠠᡳ");
   assert.equal(referenceForms("cy'").abkai, "cyʻ");
   assert.equal(referenceForms("cy'").initial, "ᡮᡟ\u200D");
   assert.equal(referenceForms("zy'").final, "\u200Dᡯᡟ");

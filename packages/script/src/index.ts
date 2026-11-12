@@ -72,6 +72,8 @@ const JOINER = "\u200D";
 
 export interface ReferenceLetter {
   abkai: string;
+  /** The form written on its own, not as part of a longer word. For display only. */
+  alone: string;
   initial: string;
   medial: string;
   final: string;
@@ -146,6 +148,7 @@ export function referenceForms(abkai: string): ReferenceLetter {
   if (text === "" || invalid.length > 0) throw new Error(`Not Abkai: ${abkai}`);
   return {
     abkai: abkai.trim().toLowerCase().replace(MODIFIER_INPUTS, MODIFIER),
+    alone: manchuForDisplay(text),
     initial: `${text}${JOINER}`,
     medial: `${JOINER}${text}${JOINER}`,
     final: `${JOINER}${text}`,

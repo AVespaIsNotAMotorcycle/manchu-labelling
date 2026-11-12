@@ -1,4 +1,4 @@
-import { referenceForms } from "@manchu-labelling/script";
+import { referenceForms, type ReferenceLetter } from "@manchu-labelling/script";
 import {
   useEffect,
   useRef,
@@ -40,8 +40,16 @@ const forms = (letters: string) => letters.split(" ").map(referenceForms);
 /**
  * The letter groups. The syllable groups show where a letter changes shape with the vowel after it.
  */
-const TABS = [
-  { id: "vowels", name: "Vowels", letters: forms("a e i o v u ai ei ui oi vi") },
+interface Tab {
+  id: string;
+  name: string;
+  letters: ReferenceLetter[];
+  /** Shows the form written on its own, as a word. */
+  alone?: boolean;
+}
+
+const TABS: Tab[] = [
+  { id: "vowels", name: "Vowels", letters: forms("a e i o v u ai ei ui oi vi"), alone: true },
   {
     id: "consonants",
     name: "Consonants",
@@ -76,7 +84,7 @@ function readSavedTab(): string {
 function LetterTabs() {
   const [selected, setSelected] = useState(readSavedTab);
   const tabList = useRef<HTMLDivElement>(null);
-  const tab = TABS.find(({ id }) => id === selected) ?? (TABS[0] as (typeof TABS)[number]);
+  const tab = TABS.find(({ id }) => id === selected) ?? (TABS[0] as Tab);
 
   function select(id: string) {
     setSelected(id);
@@ -95,7 +103,7 @@ function LetterTabs() {
       event.key === "Home" ? 0 : event.key === "End" ? TABS.length - 1 : step && index + step;
     if (target === undefined || target < 0 || target >= TABS.length) return;
     event.preventDefault();
-    select((TABS[target] as (typeof TABS)[number]).id);
+    select((TABS[target] as Tab).id);
     tabList.current?.querySelectorAll<HTMLElement>('[role="tab"]')[target]?.focus();
   }
 
@@ -124,7 +132,7 @@ function LetterTabs() {
         ))}
       </div>
       <div
-        className="letter-columns"
+        className={tab.alone ? "letter-columns with-alone" : "letter-columns"}
         role="tabpanel"
         id="letter-tab-panel"
         aria-labelledby={`letter-tab-${tab.id}`}
@@ -133,16 +141,17 @@ function LetterTabs() {
           <thead>
             <tr>
               <th>Abkai</th>
+              {tab.alone && <th>Alone</th>}
               <th>Initial</th>
               <th>Medial</th>
               <th>Final</th>
             </tr>
           </thead>
           <tbody>
-            {tab.letters.map(({ abkai, initial, medial, final }) => (
+            {tab.letters.map(({ abkai, alone, initial, medial, final }) => (
               <tr key={abkai}>
                 <th scope="row">{abkai}</th>
-                {[initial, medial, final].map((form) => (
+                {(tab.alone ? [alone, initial, medial, final] : [initial, medial, final]).map((form) => (
                   <td key={form}>
                     <span className="manchu letter" lang="mnc">
                       {form}

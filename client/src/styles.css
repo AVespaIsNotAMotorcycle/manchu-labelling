@@ -639,6 +639,11 @@ legend {
   column-gap: 1rem;
 }
 
+/* Wide enough for the extra column of forms written alone. */
+.letter-columns.with-alone {
+  columns: 19rem;
+}
+
 /* Chromium repeats the header in the second column only when the header cannot be split. */
 .reference tr,
 .reference thead {
@@ -661,6 +666,17 @@ legend {
 .manchu.letter {
   display: inline-block;
   font-size: 2.5rem;
+}
+
+/* The extra column for forms written alone only fits a narrow panel with smaller letters. */
+@container reference (max-width: 18.75rem) {
+  .reference .with-alone td {
+    padding: 0.15rem;
+  }
+
+  .with-alone .manchu.letter {
+    font-size: 2.2rem;
+  }
 }
 
 /* This depends on the room left by the letter forms, which the user can resize. */
