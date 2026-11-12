@@ -77,16 +77,6 @@ export interface ReferenceLetter {
   final: string;
 }
 
-/** Each single letter's positional forms. Joiners make a font draw the form for that position. */
-export const REFERENCE_LETTERS: readonly ReferenceLetter[] = LETTERS.filter(
-  ([manchu]) => [...manchu].length === 1 && manchu !== "ᡱ",
-).map(([manchu, abkai]) => ({
-  abkai,
-  initial: `${manchu}${JOINER}`,
-  medial: `${JOINER}${manchu}${JOINER}`,
-  final: `${JOINER}${manchu}`,
-}));
-
 /** Abkai `q` alone always means ᠴ. ᡱ is only entered through the sequence `qyʻ`. */
 const ABKAI_INPUT = new Map(
   LETTERS.filter(([manchu]) => manchu !== "ᡱ").map(([manchu, abkai]) => [abkai, manchu]),
@@ -145,6 +135,21 @@ export function manchuForDisplay(manchu: string): string {
 export function abkaiToManchu(abkai: string): Conversion {
   const normalized = abkai.trim().toLowerCase().replace(MODIFIER_INPUTS, MODIFIER);
   return convert(normalized, ABKAI_KEYS, (key) => ABKAI_INPUT.get(key) as string);
+}
+
+/**
+ * The positional forms of a letter, sequence, or syllable typed in Abkai, for the letter reference. Joiners
+ * make a font draw the form for that position. Throws if the input is not Abkai.
+ */
+export function referenceForms(abkai: string): ReferenceLetter {
+  const { text, invalid } = abkaiToManchu(abkai);
+  if (text === "" || invalid.length > 0) throw new Error(`Not Abkai: ${abkai}`);
+  return {
+    abkai: abkai.trim().toLowerCase().replace(MODIFIER_INPUTS, MODIFIER),
+    initial: `${text}${JOINER}`,
+    medial: `${JOINER}${text}${JOINER}`,
+    final: `${JOINER}${text}`,
+  };
 }
 
 /** Converts Manchu Unicode to Abkai. */

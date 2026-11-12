@@ -1,4 +1,4 @@
-import { REFERENCE_LETTERS } from "@manchu-labelling/script";
+import { referenceForms } from "@manchu-labelling/script";
 import {
   useEffect,
   useRef,
@@ -9,6 +9,7 @@ import {
 } from "react";
 
 const STORAGE_KEY = "reference-width";
+const TAB_STORAGE_KEY = "reference-tab";
 const KEYBOARD_STEP = 32;
 /** These match the limits on `.reference` in styles.css. */
 const MIN_WIDTH = 304;
@@ -32,6 +33,121 @@ function saveWidth(width: number): void {
   } catch {
     // The width just lasts for this visit if the browser blocks storage.
   }
+}
+
+const forms = (letters: string) => letters.split(" ").map(referenceForms);
+
+/**
+ * The letter groups. The unexpected combinations are syllables where a letter changes shape with the
+ * vowel after it.
+ */
+const TABS = [
+  { id: "vowels", name: "Vowels", letters: forms("a e i o v u") },
+  {
+    id: "consonants",
+    name: "Consonants",
+    letters: forms("n ng k g h b p s x t d l m q j y r f w g' h' zh"),
+  },
+  { id: "chinese", name: "Chinese transliteration", letters: forms("k' c cy' z zy' r' sy' qy' jy' y'") },
+  {
+    id: "combinations",
+    name: "Unexpected combinations",
+    letters: forms("ba be bi bo bu ke ku ki ge gu gi he hu hi ka ga ha ko go ho kv gv hv"),
+  },
+];
+
+function readSavedTab(): string {
+  try {
+    const saved = localStorage.getItem(TAB_STORAGE_KEY);
+    return TABS.some(({ id }) => id === saved) ? (saved as string) : "vowels";
+  } catch {
+    return "vowels";
+  }
+}
+
+function LetterTabs() {
+  const [selected, setSelected] = useState(readSavedTab);
+  const tabList = useRef<HTMLDivElement>(null);
+  const tab = TABS.find(({ id }) => id === selected) ?? (TABS[0] as (typeof TABS)[number]);
+
+  function select(id: string) {
+    setSelected(id);
+    try {
+      localStorage.setItem(TAB_STORAGE_KEY, id);
+    } catch {
+      // The tab just lasts for this visit if the browser blocks storage.
+    }
+  }
+
+  // Arrow keys move between tabs, as in other tab lists.
+  function moveWithKeyboard(event: KeyboardEvent) {
+    const index = TABS.findIndex(({ id }) => id === selected);
+    const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+    const target =
+      event.key === "Home" ? 0 : event.key === "End" ? TABS.length - 1 : step && index + step;
+    if (target === undefined || target < 0 || target >= TABS.length) return;
+    event.preventDefault();
+    select((TABS[target] as (typeof TABS)[number]).id);
+    tabList.current?.querySelectorAll<HTMLElement>('[role="tab"]')[target]?.focus();
+  }
+
+  return (
+    <div>
+      <div
+        className="letter-tabs"
+        role="tablist"
+        aria-label="Letter groups"
+        ref={tabList}
+        onKeyDown={moveWithKeyboard}
+      >
+        {TABS.map(({ id, name }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            id={`letter-tab-${id}`}
+            aria-selected={id === selected}
+            aria-controls="letter-tab-panel"
+            tabIndex={id === selected ? 0 : -1}
+            onClick={() => select(id)}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+      <div
+        className="letter-columns"
+        role="tabpanel"
+        id="letter-tab-panel"
+        aria-labelledby={`letter-tab-${tab.id}`}
+      >
+        <table>
+          <thead>
+            <tr>
+              <th>Abkai</th>
+              <th>Initial</th>
+              <th>Medial</th>
+              <th>Final</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tab.letters.map(({ abkai, initial, medial, final }) => (
+              <tr key={abkai}>
+                <th scope="row">{abkai}</th>
+                {[initial, medial, final].map((form) => (
+                  <td key={form}>
+                    <span className="manchu letter" lang="mnc">
+                      {form}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
 export function Reference() {
@@ -120,32 +236,7 @@ export function Reference() {
               </a>
             </li>
           </ul>
-          <div className="letter-columns">
-            <table>
-              <thead>
-                <tr>
-                  <th>Abkai</th>
-                  <th>Initial</th>
-                  <th>Medial</th>
-                  <th>Final</th>
-                </tr>
-              </thead>
-              <tbody>
-                {REFERENCE_LETTERS.map(({ abkai, initial, medial, final }) => (
-                  <tr key={abkai}>
-                    <th scope="row">{abkai}</th>
-                    {[initial, medial, final].map((form) => (
-                      <td key={form}>
-                        <span className="manchu letter" lang="mnc">
-                          {form}
-                        </span>
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <LetterTabs />
         </div>
       </aside>
     </>

@@ -116,7 +116,8 @@ Manjurists.
 - As the user types, the word is rendered in Manchu script next to the image, so they can compare the
   two. Rendering needs testing, because digital Manchu display is not fully settled.
 - The letter-form reference is always available, with links to Roth Li's *The Manchu script* and
-  *Introduction to Manchu in 21 Lessons*. These are linked rather than reproduced because their license
+  *Introduction to Manchu in 21 Lessons*. Its tabs group vowels, consonants, letters for transliterating
+  Chinese, and syllables where a letter changes shape with its vowel. These are linked rather than reproduced because their license
   is unknown.
 - Users can change the Manchu font from the top bar without leaving the page, and the choice is kept in
   their browser. It applies to the preview and the reference.

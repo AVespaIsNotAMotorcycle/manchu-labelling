@@ -6,6 +6,7 @@ import {
   manchuForDisplay,
   manchuToAbkai,
   manchuToMollendorff,
+  referenceForms,
   STORED_MANCHU,
   stripVariationSelectors,
 } from "../src/index.ts";
@@ -82,4 +83,19 @@ test("stored text allows letters and unreadable marks, but not variation selecto
   assert.match("ᠮᠠ?ᠵᡠ", STORED_MANCHU);
   assert.doesNotMatch("ᡳ\u180B", STORED_MANCHU);
   assert.doesNotMatch("manju", STORED_MANCHU);
+});
+
+test("gives the positional forms of letters, sequences, and syllables", () => {
+  assert.deepEqual(referenceForms("a"), {
+    abkai: "a",
+    initial: "ᠠ\u200D",
+    medial: "\u200Dᠠ\u200D",
+    final: "\u200Dᠠ",
+  });
+  assert.equal(referenceForms("cy'").abkai, "cyʻ");
+  assert.equal(referenceForms("cy'").initial, "ᡮᡟ\u200D");
+  assert.equal(referenceForms("zy'").final, "\u200Dᡯᡟ");
+  assert.equal(referenceForms("kv").medial, "\u200Dᡴᡡ\u200D");
+  assert.throws(() => referenceForms("1"));
+  assert.throws(() => referenceForms(""));
 });

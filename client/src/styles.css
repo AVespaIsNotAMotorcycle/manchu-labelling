@@ -615,6 +615,24 @@ legend {
   }
 }
 
+/* Separate buttons, so that they wrap cleanly in a narrow panel. */
+.letter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.letter-tabs button {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.9rem;
+}
+
+.letter-tabs button[aria-selected="true"] {
+  background: var(--text);
+  color: var(--surface);
+}
+
 /* One table flowing through as many equal columns as fit. */
 .letter-columns {
   columns: 15.5rem;
