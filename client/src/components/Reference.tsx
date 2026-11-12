@@ -66,6 +66,11 @@ const TABS: Tab[] = [
     letters: forms("ba be bi bo bu"),
   },
   {
+    id: "td-syllables",
+    name: "T/D syllables",
+    letters: forms("ta te ti to tu tv da de di do du dv"),
+  },
+  {
     id: "glottal-syllables",
     name: "Glottal syllables",
     letters: forms("ke ku ki ge gu gi he hu hi ka ga ha ko go ho kv gv hv"),
