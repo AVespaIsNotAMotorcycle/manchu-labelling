@@ -25,10 +25,12 @@ owner has not yet approved. Everything else is agreed. Unresolved questions are 
   its policy does not address bulk use or derivative datasets. Its IIIF manifests link to general terms
   and carry no per-item rights statement, so each volume must be assessed. Volumes dated after about
   1900 need extra care, because the policy only covers works that are public domain in the US.
-- **Staatsbibliothek zu Berlin** is deferred. **Harvard images are the only scans used for now.** If
-  Berlin is reconsidered, its terms must be confirmed from the official site or the items themselves.
-  Copies on third-party sites describe CC BY-NC-SA 3.0 DE, and some items carry a Public Domain Mark. If
-  NC-SA applies, crops from those images would have to stay under NC-SA and go in a separate package.
+- **Staatsbibliothek zu Berlin** is the second source, from 2026-11-11. Its official terms of use say
+  that its digitisations of public-domain originals stay public domain, under the Public Domain Mark
+  1.0, and ask reusers to name "Stabi Berlin" with the item's permanent link. Each item's own metadata
+  decides. Where it states no licence, the terms apply. An item that states another licence, such as
+  CC BY-NC-SA, needs checking before use, and NC-SA crops would have to go in a separate package.
+  The first volume is *Justan i bithe* (Hs. or. 10791), a bilingual Manchu–Chinese manuscript.
 - **Sun et al. (2026)** is a [CC BY 4.0](https://doi.org/10.57760/sciencedb.25676) set of 24,280 printed
   word images with labels and page sources. It can supply labelled print images for the quiz, with
   attribution. A test run will also use it for hidden checks, to see whether its images work there or
@@ -48,13 +50,31 @@ owner has not yet approved. Everything else is agreed. Unresolved questions are 
 2. Fetch page images through IIIF where available. Harvard manifests are at
    `https://nrs.harvard.edu/URN-3:FHCL:<id>:MANIFEST:3`.
 3. Segment pages into word images. Harvard images are usually two-page spreads, so they are split
-   first. Pages may be bilingual, have ink showing through from the other side, and contain text that
-   runs vertically in columns from left to right.
+   first, while Stabi Berlin's are single pages. Pages may be bilingual, have ink showing through from
+   the other side, and contain text that runs vertically in columns from left to right. Some columns mix
+   the scripts, with a Manchu phrase followed by its Chinese translation, so each column is cut into
+   word-sized pieces and its Chinese characters become separate crops.
 4. Store each crop with its **source page, bounding box, and reading order** (page, column, word
    index), so that others can rebuild lines and pages.
 5. Set production and script style for the volume (section 4).
 
 Segmentation is the biggest technical risk and gets an early trial (section 11).
+
+### Known labels from existing transcriptions
+
+Where a scan already has a transcription, its words can become known labels without anyone typing them.
+
+1. `align_transcription.py` pairs crops with the transcription's words. Lines are matched to columns,
+   and within a column, crops are matched to words by size. A classifier trained on a volume with
+   unmixed columns tells Chinese crops from Manchu ones, so that Chinese is skipped. The result is only
+   a list of candidates.
+2. A person checks each candidate with `review_candidates.py`, answering yes only if the crop shows
+   exactly that word. Every decision is kept in a log.
+3. Confirmed crops are imported as known labels, with the transcription and the reviewer recorded as
+   their origin.
+
+The first transcription is manc.hu's reading of *Justan i bithe*. Its reuse terms are unknown, but a
+known label is a reading of a public-domain text, and each one is confirmed against the scan by eye.
 
 ### Trial results
 
@@ -269,6 +289,11 @@ qualification for that script class and must pass the quiz again before labellin
 A release would otherwise expose the answers to active check images. **[Proposed]** Active checks are
 left out of releases and included once retired.
 
+**[Proposed]** by the owner, for later: a new release is published automatically every Friday, and
+once a word has been published it can be used as a hidden check. This conflicts with the proposal
+above, since a published check's answer is public. A labeler could only use it by finding the crop in
+the release, which is hard to do while labelling, but someone who wanted to could.
+
 ## 8. Roles
 
 | Role | Permissions |
@@ -401,6 +426,7 @@ Each milestone ends with a check-in.
 
 ## 12. Open questions
 
-1. **Manuscript known labels:** print is covered by Sun et al. (2026), but who transcribes the first
-   manuscript images, and can existing transcriptions be aligned to scans?
+1. **Manuscript known labels:** print is covered by Sun et al. (2026). Existing transcriptions can be
+   aligned to scans and confirmed by eye (section 3), starting with *Justan i bithe*. Who confirms them
+   once there are more?
 2. **Hosting:** where do the app and database run in production?

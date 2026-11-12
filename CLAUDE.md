@@ -25,6 +25,11 @@ npm run dev -w client        # client, proxying /api to the server
 python3 -m venv .venv && .venv/bin/pip install -r pipeline/requirements.txt
 .venv/bin/python pipeline/fetch_volume.py 10499177    # download a Harvard volume to data/
 .venv/bin/python pipeline/segment.py 10499177         # segment it into word crops
+.venv/bin/python pipeline/fetch_volume.py PPN3306132969 --source stabi
+.venv/bin/python pipeline/segment.py PPN3306132969 --pages 3 4 5 --single-pages --mixed-columns
+.venv/bin/python pipeline/align_transcription.py PPN3306132969 --image-offset 1 --reference 10499177
+.venv/bin/python pipeline/review_candidates.py PPN3306132969   # yes/no review at http://127.0.0.1:8765
+.venv/bin/python pipeline/review_candidates.py PPN3306132969 --export <file>   # confirmed crops
 npm run import-segments -w server -- 10499177 --production manuscript --script regular
 .venv/bin/python pipeline/build_training_bank.py --photos <dir> --lexicon <file> --fonts client/src/fonts --volume 10499177
 npm run import-training -w server -- --script regular
