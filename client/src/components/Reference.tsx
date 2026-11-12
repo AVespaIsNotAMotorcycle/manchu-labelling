@@ -41,7 +41,7 @@ const forms = (letters: string) => letters.split(" ").map(referenceForms);
  * The letter groups. The syllable groups show where a letter changes shape with the vowel after it.
  */
 const TABS = [
-  { id: "vowels", name: "Vowels", letters: forms("a e i o v u") },
+  { id: "vowels", name: "Vowels", letters: forms("a e i o v u ai ei ui oi vi") },
   {
     id: "consonants",
     name: "Consonants",
