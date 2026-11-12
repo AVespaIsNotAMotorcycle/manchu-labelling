@@ -3,7 +3,7 @@
 A web app for crowdsourcing labels on word images from historical Manchu sources, and the design of
 the open dataset it produces.
 
-**Status:** draft, last updated 2026-11-06. Items marked **[Proposed]** are suggested defaults the
+**Status:** draft, last updated 2026-11-11. Items marked **[Proposed]** are suggested defaults the
 owner has not yet approved. Everything else is agreed. Unresolved questions are in
 [section 12](#12-open-questions).
 
@@ -213,9 +213,19 @@ with the quality control milestone, so the text must be true before non-test use
 - A test run uses Sun et al. (2026) print images as hidden checks. Afterward, we decide whether they
   are too recognizable to keep using.
 - Each user sees a given check image at most once.
-- **[Proposed]** Checks make up about 20% of a user's first 100 images and 5–10% after that.
+- Checks make up about 20% of a user's first 100 images and 8% after that.
 - Nothing in the API may reveal a check image. Responses, image URLs, and IDs look the same as those
   for ordinary images, and the client receives no answers.
+- A check is a real crop from an ingested volume with a known answer, so its page view is real too.
+  Answers are imported with `import-known-labels`, which names crops by their segmentation file name
+  and records who supplied them. An existing answer is never overwritten.
+- A check must pass the same rules as any other image, such as not being under crop review. Checks are
+  only given while ordinary images remain, so that a user is never left with only checks.
+- Crops with a known answer leave the ordinary queue, since they need no crowd labels.
+- A check passes only on an exact match of category and letters. Each user's latest label on a check is
+  graded, so a correction counts. Results are worked out from history each time and never stored.
+- As built, results are only visible to admins, through `check-results`. Losing qualification, trust,
+  and feedback to users come next.
 
 ### Trust
 

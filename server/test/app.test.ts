@@ -6,10 +6,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, beforeEach, test } from "node:test";
 
+import { abkaiToManchu } from "@manchu-labelling/script";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose, { Types } from "mongoose";
 
 import { createApp } from "../src/app.ts";
+import { checkResults, passesCheck, summarizeChecks } from "../src/checks.ts";
 import { connectDatabase } from "../src/db.ts";
 import { CropReview, WordImage, WordInstance } from "../src/models/crops.ts";
 import { Annotation, Assignment, KnownLabel } from "../src/models/labels.ts";
@@ -17,6 +19,8 @@ import { Page, Volume } from "../src/models/sources.ts";
 import { Qualification, TrainingAttempt, TrainingItem } from "../src/models/training.ts";
 import { User } from "../src/models/users.ts";
 import { hashPassword } from "../src/passwords.ts";
+import { checkRate, pickNextImage } from "../src/queue.ts";
+import { importKnownLabels } from "../src/scripts/import-known-labels.ts";
 import { splitRealTraining } from "../src/scripts/split-real-training.ts";
 
 const PASSWORD = "Correct horse battery 1";
@@ -67,16 +71,20 @@ async function loggedIn(email: string, overrides: object = {}, qualified = true)
   return client;
 }
 
-async function makeWord(key: string, page: Types.ObjectId) {
+async function makeWord(
+  key: string,
+  page: Types.ObjectId,
+  position: { side?: "left" | "right"; column?: number; word?: number } = {},
+) {
   const instance = new Types.ObjectId();
   const image = await WordImage.create({
     run: new Types.ObjectId(),
     page,
     instance,
     box: { x: 1, y: 2, width: 3, height: 4 },
-    side: "left",
-    column: 0,
-    word: 0,
+    side: position.side ?? "left",
+    column: position.column ?? 0,
+    word: position.word ?? 0,
     columnType: "manchu",
     imageKey: key,
   });
@@ -300,9 +308,122 @@ test("words under review are not handed out", async () => {
 test("the response is identical for an image with a known label", async () => {
   const without = await loggedIn("first@example.com");
   const before = await (await without.request("/api/labelling/next")).text();
-  await KnownLabel.create({ wordImage: imageId, category: "manchu", origin: "test" });
+  const contextBefore = await (await without.request(`/api/labelling/${imageId}/context`)).text();
+
+  // The same crop, now a hidden check, handed to another user as the queue would.
+  await KnownLabel.create({ wordImage: imageId, category: "manchu", manchu: "ᠮᠠᠨᠵᡠ", origin: "test" });
   const withLabel = await loggedIn("second@example.com");
+  const user = await User.findOne({ email: "second@example.com" }).orFail();
+  await Assignment.create({ user: user._id, wordImage: imageId });
   assert.equal(await (await withLabel.request("/api/labelling/next")).text(), before);
+  const contextAfter = await (await withLabel.request(`/api/labelling/${imageId}/context`)).text();
+  assert.equal(contextAfter, contextBefore);
+});
+
+/** Adds an ordinary crop and a hidden check on the test page, and returns their ids. */
+async function makeCheck() {
+  const image = await WordImage.findById(imageId).orFail();
+  const check = await makeWord("33333333-3333-4333-8333-333333333333.jpg", image.page, { word: 1 });
+  await KnownLabel.create({ wordImage: check._id, category: "manchu", manchu: "ᠮᠠᠨᠵᡠ", origin: "test" });
+  return check._id;
+}
+
+const always = () => 0;
+const never = () => 0.99;
+
+test("mixes in each hidden check once, at the check rate", async () => {
+  const check = await makeCheck();
+  const user = (await makeUser("person@example.com"))._id;
+  assert.equal(String(await pickNextImage(user, ["regular"], never)), String(imageId));
+  assert.equal(String(await pickNextImage(user, ["regular"], always)), String(check));
+
+  await Assignment.create({ user, wordImage: check });
+  assert.equal(String(await pickNextImage(user, ["regular"], always)), String(imageId));
+});
+
+test("hidden checks are only given while ordinary images remain", async () => {
+  await makeCheck();
+  const user = (await makeUser("person@example.com"))._id;
+  await Assignment.create({ user, wordImage: imageId, submittedAt: new Date() });
+  assert.equal(await pickNextImage(user, ["regular"], always), null);
+});
+
+test("retired checks are not given, and known images never go to the ordinary queue", async () => {
+  const check = await makeCheck();
+  await KnownLabel.updateOne({ wordImage: check }, { state: "retired" });
+  const user = (await makeUser("person@example.com"))._id;
+  for (const random of [always, never]) {
+    assert.equal(String(await pickNextImage(user, ["regular"], random)), String(imageId));
+  }
+});
+
+test("checks are more frequent for a user's first 100 images", () => {
+  assert.equal(checkRate(0), 0.2);
+  assert.equal(checkRate(99), 0.2);
+  assert.equal(checkRate(100), 0.08);
+});
+
+test("grades each user's latest label on a check, and counts failures in a row", async () => {
+  const check = await makeCheck();
+  const [first, second] = [new Types.ObjectId(), new Types.ObjectId()];
+  const label = (user: Types.ObjectId, abkai: string, minutes: number) => ({
+    wordImage: check,
+    user,
+    category: "manchu",
+    transcription: { abkai, manchu: abkaiToManchu(abkai).text },
+    converterVersion: 1,
+    createdAt: new Date(2026, 0, 1, 0, minutes),
+  });
+  // The first user corrects a wrong label. The second user misses a letter.
+  await Annotation.insertMany([label(first, "manjv", 0), label(first, "manju", 1), label(second, "manj", 2)]);
+
+  const results = await checkResults();
+  assert.deepEqual(
+    results.map(({ user, passed, scriptClass }) => [String(user), passed, scriptClass]),
+    [
+      [String(first), true, "regular"],
+      [String(second), false, "regular"],
+    ],
+  );
+  assert.equal(summarizeChecks(results).get(`${second}:regular`)?.failedInARow, 1);
+});
+
+test("a check passes only on an exact match", () => {
+  const answer = { category: "manchu", manchu: "ᠮᠠᠨᠵᡠ" };
+  assert.equal(passesCheck(answer, { category: "manchu", transcription: { manchu: "ᠮᠠᠨᠵᡠ" } }), true);
+  assert.equal(passesCheck(answer, { category: "manchu", transcription: { manchu: "ᠮᠠᠨᠵ?" } }), false);
+  assert.equal(passesCheck(answer, { category: "bad_crop" }), false);
+  assert.equal(passesCheck({ category: "chinese" }, { category: "chinese" }), true);
+});
+
+test("imports known answers by crop name, checking every line first", async () => {
+  const image = await WordImage.findById(imageId).orFail();
+  await makeWord("44444444-4444-4444-8444-444444444444.jpg", image.page, {
+    side: "right",
+    column: 2,
+    word: 3,
+  });
+  const lines = [
+    { crop: "0001_left_00_00", category: "manchu", abkai: "manju" },
+    { crop: "0001_right_02_03.jpg", category: "chinese" },
+  ];
+  for (const bad of [
+    [{ crop: "0001_left_00_00", category: "manchu", abkai: "man?ju" }],
+    [{ crop: "0001_left_00_00", category: "manchu" }],
+    [{ crop: "0001_left_00_00", category: "chinese", abkai: "manju" }],
+    [{ crop: "0001_left_09_09", category: "chinese" }],
+    [{ crop: "0002_left_00_00", category: "chinese" }],
+    [lines[0], lines[0]],
+  ]) {
+    await assert.rejects(importKnownLabels("test", "tester", bad as typeof lines));
+  }
+  assert.equal(await KnownLabel.countDocuments(), 0);
+
+  assert.equal(await importKnownLabels("test", "tester", lines), 2);
+  const known = await KnownLabel.findOne({ wordImage: imageId }).orFail();
+  assert.equal(known.manchu, "ᠮᠠᠨᠵᡠ");
+  assert.equal(known.origin, "tester");
+  await assert.rejects(importKnownLabels("test", "tester", [lines[1] as (typeof lines)[number]]));
 });
 
 /**

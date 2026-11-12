@@ -29,6 +29,8 @@ npm run import-segments -w server -- 10499177 --production manuscript --script r
 .venv/bin/python pipeline/build_training_bank.py --photos <dir> --lexicon <file> --fonts client/src/fonts --volume 10499177
 npm run import-training -w server -- --script regular
 npm run import-training -w server -- --script regular --bank data/training/<name>   # a later, smaller bank
+npm run import-known-labels -w server -- --volume URN-3:FHCL:10499177 --origin "<who>" <file>   # hidden checks
+npm run check-results -w server                                 # each user's hidden check results
 npm run create-user -w server -- person@example.com [--admin]   # prompts for the password
 ```
 
