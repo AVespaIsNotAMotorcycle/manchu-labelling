@@ -111,6 +111,8 @@ Manjurists.
 
 - The labelling screen shows the word crop and, on demand, the full page with a bounding box around
   the word.
+- The category question asks **Manchu** or **Not Manchu** first. Not Manchu then asks which other
+  category applies, with nothing preselected.
 - As the user types, the word is rendered in Manchu script next to the image, so they can compare the
   two. Rendering needs testing, because digital Manchu display is not fully settled.
 - The letter-form reference is always available, with links to Roth Li's *The Manchu script* and

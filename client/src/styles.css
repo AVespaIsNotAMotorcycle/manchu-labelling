@@ -494,6 +494,11 @@ legend {
   cursor: pointer;
 }
 
+.not-manchu {
+  display: block;
+  margin-top: 0.75rem;
+}
+
 .unsure {
   display: block;
   margin-top: 0.25rem;

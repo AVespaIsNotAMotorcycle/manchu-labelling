@@ -249,7 +249,9 @@ function Question(props: {
 
   const isManchu = category === "manchu";
   const preview = abkaiToManchu(abkai);
-  const ready = !isManchu || (preview.text !== "" && preview.invalid.length === 0);
+  const ready = isManchu
+    ? preview.text !== "" && preview.invalid.length === 0
+    : category !== "";
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -273,12 +275,11 @@ function Question(props: {
           <figcaption>Image</figcaption>
           <CropImage src={item.imageUrl} />
         </figure>
-        {isManchu && (
-          <figure>
-            <figcaption>Your reading</figcaption>
-            <ManchuText text={preview.text} className="preview" />
-          </figure>
-        )}
+        {/* Kept when the image is not Manchu, so that the fields do not move. */}
+        <figure>
+          <figcaption>Your reading</figcaption>
+          <ManchuText text={isManchu ? preview.text : ""} className="preview" />
+        </figure>
       </div>
       <div className="fields">
         <CategoryField value={category} onChange={setCategory} />

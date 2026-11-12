@@ -41,7 +41,7 @@ function LabelForm({ image, onDone }: { image: LabelImage; onDone: () => void })
   const preview = abkaiToManchu(transcription);
   const intended = abkaiToManchu(intendedWord);
   const invalid = isManchu && (preview.invalid.length > 0 || intended.invalid.length > 0);
-  const ready = !invalid && (!isManchu || preview.text !== "");
+  const ready = !invalid && (isManchu ? preview.text !== "" : category !== "");
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -72,12 +72,11 @@ function LabelForm({ image, onDone }: { image: LabelImage; onDone: () => void })
           <figcaption>Image</figcaption>
           <CropImage src={image.imageUrl} />
         </figure>
-        {isManchu && (
-          <figure>
-            <figcaption>Your reading</figcaption>
-            <ManchuText text={preview.text} className="preview" />
-          </figure>
-        )}
+        {/* Kept when the image is not Manchu, so that the fields do not move. */}
+        <figure>
+          <figcaption>Your reading</figcaption>
+          <ManchuText text={isManchu ? preview.text : ""} className="preview" />
+        </figure>
       </div>
 
       <div className="fields">
