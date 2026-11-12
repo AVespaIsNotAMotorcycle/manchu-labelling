@@ -294,10 +294,23 @@ qualification for that script class and must pass the quiz again before labellin
 A release would otherwise expose the answers to active check images. **[Proposed]** Active checks are
 left out of releases and included once retired.
 
-**[Proposed]** by the owner, for later: a new release is published automatically every Friday, and
-once a word has been published it can be used as a hidden check. This conflicts with the proposal
-above, since a published check's answer is public. A labeler could only use it by finding the crop in
-the release, which is hard to do while labelling, but someone who wanted to could.
+**[Proposed]** by the owner, for later: a new release is published automatically every Friday.
+
+### Held-back images
+
+Decided by the owner on 2026-11-11, so that new hidden checks keep coming from the crowd without their
+answers ever being published:
+
+- **15% of word instances are held back** from releases. They are chosen at random when a volume is
+  imported, so the choice never depends on labels and the published data is not skewed. Volumes
+  imported before this rule get the same random choice once. The choice is stored only on the server.
+- Held-back images are labelled like any other image, but need **3 independent labels** instead of 2.
+- When the trusted labelers agree exactly, an **admin confirms** the answer with a yes/no review. It
+  then becomes an active known label, with the labelers and the admin recorded as its origin.
+- A user who labelled an image never gets it as a check, as with every check.
+- Held-back images are left out of releases while they are checks, and published once retired, like
+  other checks. The datasheet says that about 15% of words are held back and how they were chosen.
+- Until it is published, the held-back set can also serve as a test split for OCR models.
 
 ## 8. Roles
 
