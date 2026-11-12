@@ -38,8 +38,7 @@ function saveWidth(width: number): void {
 const forms = (letters: string) => letters.split(" ").map(referenceForms);
 
 /**
- * The letter groups. The unexpected combinations are syllables where a letter changes shape with the
- * vowel after it.
+ * The letter groups. The syllable groups show where a letter changes shape with the vowel after it.
  */
 const TABS = [
   { id: "vowels", name: "Vowels", letters: forms("a e i o v u") },
@@ -54,9 +53,14 @@ const TABS = [
     letters: forms("k' g' h' c cy' z zy' r' sy' qy' zh jy' y'"),
   },
   {
-    id: "combinations",
-    name: "Unexpected combinations",
-    letters: forms("ba be bi bo bu ke ku ki ge gu gi he hu hi ka ga ha ko go ho kv gv hv"),
+    id: "b-syllables",
+    name: "B syllables",
+    letters: forms("ba be bi bo bu"),
+  },
+  {
+    id: "glottal-syllables",
+    name: "Glottal syllables",
+    letters: forms("ke ku ki ge gu gi he hu hi ka ga ha ko go ho kv gv hv"),
   },
 ];
 
