@@ -4,6 +4,7 @@ import type { Category } from "./models/labels.ts";
 import type { ScriptClass } from "./models/sources.ts";
 import {
   Qualification,
+  QuizReset,
   TRAINING_KINDS,
   TrainingAttempt,
   TrainingItem,
@@ -90,26 +91,66 @@ export function summarizeAnswers(
   return { answered: answers.length, phases, passes: current === TRAINING_KINDS.length };
 }
 
-async function summarize(user: Id, scriptClass: ScriptClass) {
+/** When the user last started the quiz for a class again, if ever. */
+async function lastReset(user: Id, scriptClass: ScriptClass): Promise<Date | null> {
+  const reset = await QuizReset.findOne({ user, scriptClass }, "createdAt").sort({ createdAt: -1 }).lean();
+  return reset?.createdAt ?? null;
+}
+
+/** Works out progress from the answers given since the latest reset. */
+async function summarize(user: Id, scriptClass: ScriptClass, since?: Date | null) {
+  const reset = since === undefined ? await lastReset(user, scriptClass) : since;
   const [answers, phasesWithImages] = await Promise.all([
-    TrainingAttempt.find({ user, scriptClass }, "correct kind").sort({ createdAt: 1, _id: 1 }).lean(),
+    TrainingAttempt.find({ user, scriptClass, ...(reset ? { createdAt: { $gt: reset } } : {}) }, "correct kind")
+      .sort({ createdAt: 1, _id: 1 })
+      .lean(),
     TrainingItem.distinct("kind", { scriptClass, active: { $ne: false } }),
   ]);
   return summarizeAnswers(answers, new Set(phasesWithImages));
 }
 
+/**
+ * Whether the user may label a class. A reset after qualifying suspends it until the quiz is passed
+ * again. Without a reset, qualification stands even if the quiz changes later.
+ */
+async function isQualified(user: Id, scriptClass: ScriptClass, qualifiedAt?: Date): Promise<boolean> {
+  const since = qualifiedAt ?? (await Qualification.findOne({ user, scriptClass }).lean())?.qualifiedAt;
+  if (!since) return false;
+  const reset = await lastReset(user, scriptClass);
+  if (!reset || reset < since) return true;
+  return (await summarize(user, scriptClass, reset)).passes;
+}
+
 export async function getProgress(user: Id, scriptClass: ScriptClass): Promise<Progress> {
-  const [summary, qualification] = await Promise.all([
+  const [summary, qualified] = await Promise.all([
     summarize(user, scriptClass),
-    Qualification.exists({ user, scriptClass }),
+    isQualified(user, scriptClass),
   ]);
   const { passes: _passes, ...progress } = summary;
-  return { ...progress, qualified: Boolean(qualification) };
+  return { ...progress, qualified };
 }
 
 /** Script classes the user may label. */
 export async function qualifiedClasses(user: Id): Promise<ScriptClass[]> {
-  return Qualification.distinct("scriptClass", { user });
+  const qualifications = await Qualification.find({ user }, "scriptClass qualifiedAt").lean();
+  const allowed = await Promise.all(
+    qualifications.map(({ scriptClass, qualifiedAt }) => isQualified(user, scriptClass, qualifiedAt)),
+  );
+  return qualifications.filter((_, index) => allowed[index]).map(({ scriptClass }) => scriptClass);
+}
+
+/**
+ * Starts the quiz for a class again. Earlier answers stay on record but stop counting, and images
+ * already answered still come last. Returns false if there is nothing to reset.
+ */
+export async function resetQuiz(user: Id, scriptClass: ScriptClass): Promise<boolean> {
+  const [summary, qualified] = await Promise.all([
+    summarize(user, scriptClass),
+    isQualified(user, scriptClass),
+  ]);
+  if (summary.answered === 0 && !qualified) return false;
+  await QuizReset.create({ user, scriptClass });
+  return true;
 }
 
 /**

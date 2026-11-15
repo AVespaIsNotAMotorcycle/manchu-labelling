@@ -6,7 +6,14 @@ import { parseText } from "../label-input.ts";
 import { CATEGORIES } from "../models/labels.ts";
 import { isScriptClass, type ScriptClass } from "../models/sources.ts";
 import { TrainingItem } from "../models/training.ts";
-import { currentItem, getProgress, qualifiedClasses, recordAnswer, type Mode } from "../training.ts";
+import {
+  currentItem,
+  getProgress,
+  qualifiedClasses,
+  recordAnswer,
+  resetQuiz,
+  type Mode,
+} from "../training.ts";
 
 export const trainingRouter = Router();
 trainingRouter.use(requireUser, requireLicense);
@@ -89,3 +96,18 @@ for (const [path, mode] of MODES) {
     });
   });
 }
+
+/** Starts the quiz for a class again, at the user's request. */
+trainingRouter.post("/:scriptClass/reset", async (request, response) => {
+  const { scriptClass } = request.params;
+  if (!isScriptClass(scriptClass)) {
+    response.status(404).json({ error: "Unknown script class" });
+    return;
+  }
+  const user = currentUser(response)._id;
+  if (!(await resetQuiz(user, scriptClass))) {
+    response.status(409).json({ error: "There is no progress to reset" });
+    return;
+  }
+  response.json({ progress: await getProgress(user, scriptClass) });
+});

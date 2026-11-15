@@ -188,8 +188,13 @@ Users complete this section before they can do real work:
 - The quiz covers category as well as transcription. About 10% of images in the printed and manuscript
   phases are not Manchu when the phase has enough of them.
 - Transcriptions must match exactly. The intended word field is not scored.
-- Passing a phase is never undone. An answer only counts towards the phase the user was in when they
-  gave it. A phase with no images passes automatically.
+- Passing a phase is never undone, except by a reset. An answer only counts towards the phase the user
+  was in when they gave it. A phase with no images passes automatically.
+- A user can reset their own quiz for a script class from the quiz page and take it again from the
+  synthetic phase. A reset is an append-only record. Only answers given after the latest reset count.
+  Earlier answers stay on record, and images already answered still come last. After a reset the user
+  cannot label that class until they pass again. Labels already made are kept, and trust still decides
+  whether they count. Losing qualification (section 7) can use the same mechanism.
 - After the synthetic phase, users can practise on synthetic images whenever they like. Practice
   answers are recorded but do not affect progress, and practice has its own waiting image so that it
   cannot skip a quiz image.

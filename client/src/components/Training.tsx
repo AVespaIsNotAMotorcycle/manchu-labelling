@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import {
   answerQuiz,
   getQuizItem,
+  resetQuiz,
   type QuizFeedback,
   type QuizItem,
   type QuizPhase,
@@ -39,7 +40,8 @@ function Introduction({ onStart }: { onStart: () => void }) {
         </li>
       </ol>
       <p>
-        Once you pass a phase, you will not need to repeat it. After the synthetic phase, you can go back
+        Once you pass a phase, you will not need to repeat it, unless you choose to start the quiz
+        again. After the synthetic phase, you can go back
         and practise on synthetic images whenever you like, and those answers will not affect your
         progress.
       </p>
@@ -306,8 +308,16 @@ function Question(props: {
   );
 }
 
-export function Training(props: { scriptClass: string; onQualified: () => void }) {
-  const { scriptClass, onQualified } = props;
+const RESET_WARNING =
+  "Start the quiz again from the first phase? Your progress in every phase will be cleared, and you " +
+  "will not be able to label until you pass again. Labels you have already made are kept.";
+
+export function Training(props: {
+  scriptClass: string;
+  onQualified: () => void;
+  onReset: () => void;
+}) {
+  const { scriptClass, onQualified, onReset } = props;
   const [item, setItem] = useState<QuizItem | null | undefined>(undefined);
   const [progress, setProgress] = useState<QuizProgress | null>(null);
   const [started, setStarted] = useState(false);
@@ -317,6 +327,7 @@ export function Training(props: { scriptClass: string; onQualified: () => void }
     result: QuizFeedback;
   } | null>(null);
   const [error, setError] = useState("");
+  const [round, setRound] = useState(0);
 
   function loadNext() {
     setAnswered(null);
@@ -329,9 +340,24 @@ export function Training(props: { scriptClass: string; onQualified: () => void }
       .catch((failure: Error) => setError(failure.message));
   }
 
-  useEffect(loadNext, [scriptClass, practice]);
+  useEffect(loadNext, [scriptClass, practice, round]);
 
   const isNew = progress?.answered === 0;
+  const shown = answered?.result.progress ?? progress;
+  const canReset = Boolean(shown && (shown.answered > 0 || shown.qualified)) && !practice;
+
+  async function startAgain() {
+    if (!window.confirm(RESET_WARNING)) return;
+    try {
+      await resetQuiz(scriptClass);
+      setError("");
+      setStarted(false);
+      setRound((value) => value + 1);
+      onReset();
+    } catch (failure) {
+      setError((failure as Error).message);
+    }
+  }
 
   return (
     <main>
@@ -340,9 +366,9 @@ export function Training(props: { scriptClass: string; onQualified: () => void }
         <Introduction onStart={() => setStarted(true)} />
       ) : (
         <>
-          {progress && (
+          {shown && (
             <ProgressMeter
-              progress={answered?.result.progress ?? progress}
+              progress={shown}
               practice={practice}
               onPracticeChange={setPractice}
             />
@@ -367,6 +393,13 @@ export function Training(props: { scriptClass: string; onQualified: () => void }
               practice={practice}
               onAnswered={(given, result) => setAnswered({ given, result })}
             />
+          )}
+          {canReset && (
+            <p className="hint">
+              <button type="button" className="link" onClick={startAgain}>
+                Start the quiz again
+              </button>
+            </p>
           )}
         </>
       )}

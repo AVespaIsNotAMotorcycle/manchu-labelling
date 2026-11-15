@@ -87,6 +87,8 @@ export const answerQuiz = (
   practice = false,
 ) =>
   request<QuizFeedback>(`${quizPath(scriptClass, practice)}/answer`, { method: "POST", body: answer });
+export const resetQuiz = (scriptClass: string) =>
+  request<{ progress: QuizProgress }>(`/api/training/${scriptClass}/reset`, { method: "POST" });
 export const getNextImage = () => request<{ image: LabelImage | null }>("/api/labelling/next");
 export const getContext = (id: string) => request<PageContext>(`/api/labelling/${id}/context`);
 export const submitLabel = (id: string, label: Label) =>

@@ -24,8 +24,9 @@ function Workspace(props: {
   view: View | null;
   onViewChange: (view: View) => void;
   onQualified: () => void;
+  onStatusChange: () => void;
 }) {
-  const { status, onViewChange, onQualified } = props;
+  const { status, onViewChange, onQualified, onStatusChange } = props;
   const canLabel = status.qualified.length > 0;
   const view = props.view ?? (canLabel ? "label" : "train");
   const scriptClass = status.classes[0]?.scriptClass;
@@ -56,7 +57,7 @@ function Workspace(props: {
         {view === "admin" && props.isAdmin && <HeldBackReview />}
         {view === "train" &&
           (scriptClass ? (
-            <Training scriptClass={scriptClass} onQualified={onQualified} />
+            <Training scriptClass={scriptClass} onQualified={onQualified} onReset={onStatusChange} />
           ) : (
             <p className="status">There are no quizzes yet.</p>
           ))}
@@ -120,6 +121,9 @@ export function App() {
           status={training}
           view={view}
           onViewChange={setView}
+          onStatusChange={() => {
+            getTrainingStatus().then(setTraining);
+          }}
           onQualified={() => {
             getTrainingStatus().then((status) => {
               setTraining(status);

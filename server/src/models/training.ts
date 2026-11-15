@@ -51,7 +51,23 @@ const trainingStateSchema = new Schema({
 });
 trainingStateSchema.index({ user: 1, scriptClass: 1 }, { unique: true });
 
-/** Permission to label a script class. Hidden checks, not this record, decide if labels count later. */
+/**
+ * A user's choice to start the quiz for a class again. Only answers given after the latest reset count,
+ * and the user cannot label the class until they pass again.
+ */
+const quizResetSchema = new Schema({
+  user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  scriptClass: { type: String, enum: SCRIPT_TYPES, required: true },
+  createdAt: { type: Date, default: Date.now, immutable: true },
+});
+quizResetSchema.index({ user: 1, scriptClass: 1, createdAt: -1 });
+quizResetSchema.plugin(appendOnly);
+
+/**
+ * Permission to label a script class. Hidden checks, not this record, decide if labels count later.
+ * `qualifiedAt` is the first pass. A reset after it suspends the permission until the user passes again,
+ * which is worked out from their answers rather than stored.
+ */
 const qualificationSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: "User", required: true },
   scriptClass: { type: String, enum: SCRIPT_TYPES, required: true },
@@ -62,4 +78,5 @@ qualificationSchema.index({ user: 1, scriptClass: 1 }, { unique: true });
 export const TrainingItem = model("TrainingItem", trainingItemSchema);
 export const TrainingAttempt = model("TrainingAttempt", trainingAttemptSchema);
 export const TrainingState = model("TrainingState", trainingStateSchema);
+export const QuizReset = model("QuizReset", quizResetSchema);
 export const Qualification = model("Qualification", qualificationSchema);

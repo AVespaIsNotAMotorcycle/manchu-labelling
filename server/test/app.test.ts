@@ -634,6 +634,45 @@ test("the image never repeats until the bank runs out", async () => {
   assert.ok(item);
 });
 
+const resetQuiz = (client: Client) => client.request("/api/training/regular/reset", { method: "POST" });
+
+test("a reset restarts every phase and suspends labelling until the user passes again", async () => {
+  await makeBank(40);
+  const client = await loggedIn("person@example.com", {}, false);
+  await passPhase(client, MANCHU);
+  await passPhase(client, MANCHU);
+  assert.equal((await passPhase(client, CHINESE)).qualified, true);
+
+  const response = await resetQuiz(client);
+  assert.equal(response.status, 200);
+  const { progress } = await response.json();
+  assert.equal(progress.qualified, false);
+  assert.equal(progress.answered, 0);
+  assert.deepEqual(progress.phases.map(({ passed }: { passed: boolean }) => passed), [false, false, false]);
+  assert.equal((await client.request("/api/labelling/next")).status, 403);
+  assert.equal((await client.request("/api/training/regular/practice/next")).status, 409);
+  assert.deepEqual((await (await client.request("/api/training/status")).json()).qualified, []);
+
+  // Earlier answers stay on record.
+  assert.equal(await TrainingAttempt.countDocuments(), 24);
+  await passPhase(client, MANCHU);
+  await passPhase(client, MANCHU);
+  assert.equal((await passPhase(client, CHINESE)).qualified, true);
+  assert.equal((await client.request("/api/labelling/next")).status, 200);
+});
+
+test("a qualified user can reset, and there is nothing to reset before the first answer", async () => {
+  await makeBank(3);
+  const fresh = await loggedIn("fresh@example.com", {}, false);
+  assert.equal((await resetQuiz(fresh)).status, 409);
+  assert.equal((await fresh.request("/api/training/unknown/reset", { method: "POST" })).status, 404);
+
+  const qualified = await loggedIn("person@example.com");
+  assert.equal((await resetQuiz(qualified)).status, 200);
+  assert.equal((await qualified.request("/api/labelling/next")).status, 403);
+  assert.equal((await resetQuiz(qualified)).status, 409);
+});
+
 test("moves quiz images from before phases into printed and manuscript", async () => {
   const items = TrainingItem.collection;
   const base = { scriptClass: "regular", source: "test", active: true };
