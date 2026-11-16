@@ -103,7 +103,10 @@ export async function resolveDispute(
     await KnownLabel.updateOne(
       { _id: known._id },
       {
-        $set: { category, manchu: transcription?.manchu },
+        // A correction to a category other than Manchu must not keep the old letters.
+        ...(transcription
+          ? { $set: { category, manchu: transcription.manchu } }
+          : { $set: { category }, $unset: { manchu: "" } }),
         $push: {
           history: { category: known.category, manchu: known.manchu, replacedAt: new Date(), dispute: id },
         },

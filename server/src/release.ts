@@ -182,7 +182,10 @@ export async function exportRelease(options: ReleaseOptions) {
     let final: { category: string; manchu?: string } | undefined;
     if (live) {
       status = "known";
-      final = { category: live.category, ...(live.manchu ? { manchu: live.manchu } : {}) };
+      final = {
+        category: live.category,
+        ...(live.category === "manchu" && live.manchu ? { manchu: live.manchu } : {}),
+      };
     } else if (settlement?.status === "reviewed" || settlement?.status === "agreed") {
       status = settlement.status;
       final = settlement.answer;

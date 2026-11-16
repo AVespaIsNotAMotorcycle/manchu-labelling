@@ -1190,3 +1190,19 @@ test("an open image from a class the user can no longer label waits until they r
   assert.equal(next.image.id, String(other._id));
   assert.notEqual(next.image.id, first);
 });
+
+test("correcting a check to another category clears its letters", async () => {
+  const client = await loggedIn("person@example.com");
+  const reviewer = await loggedIn("reviewer@example.com", { role: "reviewer" });
+  const user = await userId("person@example.com");
+  const [check] = await labelChecks(user, ["manj"]);
+  await labelOthers(user, 25, 5);
+  await client.request("/api/profile/disputes", { method: "POST", body: { kind: "check", id: check, category: "bad_crop" } });
+  const [item] = (await (await reviewer.request("/api/review/disputes")).json()).items;
+  const body = { outcome: "corrected", category: "bad_crop" };
+  assert.equal((await reviewer.request(`/api/review/disputes/${item.id}`, { method: "POST", body })).status, 204);
+  const known = await KnownLabel.findOne({ wordImage: check }).lean();
+  assert.equal(known?.category, "bad_crop");
+  assert.equal(known?.manchu, undefined);
+  assert.equal(known?.history?.[0]?.category, "manchu");
+});
