@@ -1,7 +1,7 @@
 import { abkaiToManchu } from "@manchu-labelling/script";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
-import { ApiError, getNextImage, submitLabel, type LabelImage } from "../api.ts";
+import { ApiError, getNextImage, getUpcomingImage, submitLabel, type LabelImage } from "../api.ts";
 import { AbkaiField } from "./AbkaiField.tsx";
 import { CategoryField } from "./CategoryField.tsx";
 import { CropImage } from "./CropImage.tsx";
@@ -171,19 +171,53 @@ function LabelForm({ image, onDone }: { image: LabelImage; onDone: () => void })
   );
 }
 
-/** `onNotQualified` is called if the user can no longer label, so that the app can send them to training. */
+/**
+ * Shows one image at a time. The next image is fetched and its crop loaded while the user labels the
+ * current one, so that saving moves straight on. `onNotQualified` is called if the user can no longer
+ * label, so that the app can send them to training.
+ */
 export function Labelling({ onNotQualified }: { onNotQualified: () => void }) {
   const [image, setImage] = useState<LabelImage | null | undefined>(undefined);
   const [error, setError] = useState("");
+  const upcoming = useRef<LabelImage | null>(null);
+  /** Counts requests for the next image, so that an answer that arrives too late is ignored. */
+  const generation = useRef(0);
+
+  function fail(failure: Error) {
+    if (failure instanceof ApiError && failure.status === 403) onNotQualified();
+    else setError(failure.message);
+  }
+
+  function prepareUpcoming(current: LabelImage) {
+    upcoming.current = null;
+    const mine = ++generation.current;
+    getUpcomingImage()
+      .then(({ image: next }) => {
+        if (mine !== generation.current || next?.id === current.id) return;
+        upcoming.current = next;
+        // Loading the crop now means the browser has it by the time it is shown.
+        if (next) new Image().src = next.imageUrl;
+      })
+      .catch(() => {
+        // The next image is only a head start, so a failure here waits until it is needed.
+      });
+  }
 
   function loadNext() {
+    const ready = upcoming.current;
+    if (ready) {
+      setImage(ready);
+      prepareUpcoming(ready);
+      return;
+    }
+    generation.current += 1;
     setImage(undefined);
     getNextImage()
-      .then(({ image: next }) => setImage(next))
-      .catch((failure: Error) => {
-        if (failure instanceof ApiError && failure.status === 403) onNotQualified();
-        else setError(failure.message);
-      });
+      .then(({ image: next }) => {
+        setImage(next);
+        if (next) prepareUpcoming(next);
+      })
+      .catch(fail);
   }
 
   useEffect(loadNext, []);

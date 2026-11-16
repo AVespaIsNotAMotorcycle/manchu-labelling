@@ -1206,3 +1206,24 @@ test("correcting a check to another category clears its letters", async () => {
   assert.equal(known?.manchu, undefined);
   assert.equal(known?.history?.[0]?.category, "manchu");
 });
+
+test("the next image can be handed out early, and becomes the current one after a save", async () => {
+  const client = await loggedIn("person@example.com");
+  const page = (await WordImage.findById(imageId).orFail()).page;
+  await makeWord("77777777-7777-4777-8777-777777777771.jpg", page, { word: 1 });
+  await makeWord("77777777-7777-4777-8777-777777777772.jpg", page, { word: 2 });
+  const get = async (path: string) => (await (await client.request(`/api/labelling/${path}`)).json()).image;
+
+  assert.equal(await get("upcoming"), null);
+  const current = await get("next");
+  const upcoming = await get("upcoming");
+  assert.notEqual(upcoming.id, current.id);
+  assert.equal((await get("upcoming")).id, upcoming.id);
+  assert.equal((await get("next")).id, current.id);
+  assert.equal(await Assignment.countDocuments({ submittedAt: null }), 2);
+
+  const save = await client.request(`/api/labelling/${current.id}`, { method: "POST", body: { category: "chinese" } });
+  assert.equal(save.status, 201);
+  assert.equal((await get("next")).id, upcoming.id);
+  assert.notEqual((await get("upcoming")).id, upcoming.id);
+});

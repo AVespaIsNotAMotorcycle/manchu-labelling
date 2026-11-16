@@ -109,6 +109,8 @@ export const answerQuiz = (
 export const resetQuiz = (scriptClass: string) =>
   request<{ progress: QuizProgress }>(`/api/training/${scriptClass}/reset`, { method: "POST" });
 export const getNextImage = () => request<{ image: LabelImage | null }>("/api/labelling/next");
+/** The image after the current one, so that it can load while the user labels. */
+export const getUpcomingImage = () => request<{ image: LabelImage | null }>("/api/labelling/upcoming");
 export const getContext = (id: string) => request<PageContext>(`/api/labelling/${id}/context`);
 export const submitLabel = (id: string, label: Label) =>
   request<void>(`/api/labelling/${id}`, { method: "POST", body: label });

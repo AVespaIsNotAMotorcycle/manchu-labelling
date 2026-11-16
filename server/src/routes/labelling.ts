@@ -41,27 +41,45 @@ async function findAssignment(user: Types.ObjectId, wordImage: string, response:
   return assignment;
 }
 
-labellingRouter.get("/next", async (_request, response) => {
+/**
+ * The user's unlabelled images in classes they can still label, oldest first. An image waiting from a
+ * class the user can no longer label stays assigned for when they requalify.
+ */
+async function openAssignments(user: Types.ObjectId, scriptClasses: readonly string[]) {
+  const waiting = await Assignment.find({ user, submittedAt: null }).sort({ assignedAt: 1, _id: 1 });
+  const classOf = await scriptClassOfImages(waiting.map(({ wordImage }) => wordImage));
+  return waiting.filter(({ wordImage }) => scriptClasses.includes(classOf.get(String(wordImage)) ?? ""));
+}
+
+/**
+ * Hands out the image at `position` in the user's open images: 0 for the one to label now, 1 for the one
+ * after, which the client loads in advance so that there is no wait between images. A user never has more
+ * than these two open.
+ */
+async function handOut(response: Response, position: 0 | 1) {
   const user = currentUser(response)._id;
   const scriptClasses = await qualifiedClasses(user);
   if (scriptClasses.length === 0) {
     response.status(403).json({ error: "Please complete training first" });
     return;
   }
-  // An image waiting from a class the user can no longer label stays assigned for when they requalify.
-  const waiting = await Assignment.find({ user, submittedAt: null }).sort({ assignedAt: 1 });
-  const classOf = await scriptClassOfImages(waiting.map(({ wordImage }) => wordImage));
-  const open = waiting.find(({ wordImage }) =>
-    (scriptClasses as readonly string[]).includes(classOf.get(String(wordImage)) ?? ""),
-  );
-  const wordImage = open?.wordImage ?? (await pickNextImage(user, scriptClasses));
+  const open = await openAssignments(user, scriptClasses);
+  if (position === 1 && open.length === 0) {
+    response.json({ image: null });
+    return;
+  }
+  const existing = open[position];
+  const wordImage = existing?.wordImage ?? (await pickNextImage(user, scriptClasses));
   if (!wordImage) {
     response.json({ image: null });
     return;
   }
-  if (!open) await Assignment.create({ user, wordImage });
+  if (!existing) await Assignment.create({ user, wordImage });
   response.json({ image: await describeImage(wordImage) });
-});
+}
+
+labellingRouter.get("/next", (_request, response) => handOut(response, 0));
+labellingRouter.get("/upcoming", (_request, response) => handOut(response, 1));
 
 labellingRouter.get("/:id/context", async (request, response) => {
   const assignment = await findAssignment(currentUser(response)._id, request.params.id, response);
