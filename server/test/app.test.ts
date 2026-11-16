@@ -814,20 +814,20 @@ test("an admin confirms agreed held-back answers, which become hidden checks", a
   const image = await WordImage.findById(imageId).orFail();
   await WordInstance.updateOne({ _id: image.instance }, { heldBack: true });
   const labeler = await loggedIn("labeler@example.com");
-  assert.equal((await labeler.request("/api/admin/held-back")).status, 403);
+  assert.equal((await labeler.request("/api/review/held-back")).status, 403);
 
   const admin = await loggedIn("admin@example.com", { role: "admin" });
   await labelBy(imageId, 2, manju);
-  assert.deepEqual((await (await admin.request("/api/admin/held-back")).json()).items, []);
+  assert.deepEqual((await (await admin.request("/api/review/held-back")).json()).items, []);
   await labelBy(imageId, 1, manju);
-  const [item] = (await (await admin.request("/api/admin/held-back")).json()).items;
+  const [item] = (await (await admin.request("/api/review/held-back")).json()).items;
   assert.equal(item.id, String(imageId));
   assert.equal(item.abkai, "manju");
   assert.equal(item.labelers, 3);
   assert.equal(item.context.box.height, 4);
 
   const decide = (body: object) =>
-    admin.request(`/api/admin/held-back/${imageId}`, { method: "POST", body });
+    admin.request(`/api/review/held-back/${imageId}`, { method: "POST", body });
   assert.equal((await decide({ decision: "maybe", category: "manchu" })).status, 400);
   // A labeler corrected their label after the admin loaded the page.
   assert.equal((await decide({ decision: "yes", category: "chinese" })).status, 409);
@@ -839,7 +839,7 @@ test("an admin confirms agreed held-back answers, which become hidden checks", a
   assert.equal(known.state, "active");
   assert.match(known.origin, /3 labelers agreed/);
   assert.equal((await HeldBackReview.findOne({ wordImage: imageId }).orFail()).labelers.length, 3);
-  assert.deepEqual((await (await admin.request("/api/admin/held-back")).json()).items, []);
+  assert.deepEqual((await (await admin.request("/api/review/held-back")).json()).items, []);
   assert.equal((await decide({ decision: "yes", category: "manchu", manchu: item.manchu })).status, 409);
 });
 
@@ -848,17 +848,130 @@ test("an admin can turn down an agreed answer, and it is not offered again", asy
   await WordInstance.updateOne({ _id: image.instance }, { heldBack: true });
   await labelBy(imageId, 3, manju);
   const admin = await loggedIn("admin@example.com", { role: "admin" });
-  const response = await admin.request(`/api/admin/held-back/${imageId}`, {
+  const response = await admin.request(`/api/review/held-back/${imageId}`, {
     method: "POST",
     body: { decision: "no", category: "manchu", manchu: manju.transcription.manchu },
   });
   assert.equal(response.status, 204);
   assert.equal(await KnownLabel.countDocuments(), 0);
-  assert.deepEqual((await (await admin.request("/api/admin/held-back")).json()).items, []);
+  assert.deepEqual((await (await admin.request("/api/review/held-back")).json()).items, []);
 });
 
 test("ordinary images never go to held-back review", async () => {
   await labelBy(imageId, 3, manju);
   const admin = await loggedIn("admin@example.com", { role: "admin" });
-  assert.deepEqual((await (await admin.request("/api/admin/held-back")).json()).items, []);
+  assert.deepEqual((await (await admin.request("/api/review/held-back")).json()).items, []);
+});
+
+/** Ordinary labels by a user on made-up images, starting some minutes from now. */
+async function labelOthers(user: Types.ObjectId, count: number, fromMinute: number) {
+  await Annotation.insertMany(
+    Array.from({ length: count }, (_, index) => ({
+      wordImage: new Types.ObjectId(),
+      user,
+      category: "chinese",
+      converterVersion: 1,
+      createdAt: new Date(Date.now() + (fromMinute + index) * 60_000),
+    })),
+  );
+}
+
+async function userId(email: string) {
+  return (await User.findOne({ email }).orFail())._id;
+}
+
+test("past checks and accuracy only show after 25 more labels", async () => {
+  const client = await loggedIn("person@example.com");
+  const user = await userId("person@example.com");
+  const [check] = await labelChecks(user, ["manj"]);
+  await labelOthers(user, 24, 10);
+  const before = await (await client.request("/api/profile")).json();
+  assert.deepEqual(before.checks, []);
+  assert.deepEqual(before.accuracy, []);
+
+  await labelOthers(user, 1, 40);
+  const after = await (await client.request("/api/profile")).json();
+  assert.equal(after.checks.length, 1);
+  assert.equal(after.checks[0].id, String(check));
+  assert.equal(after.checks[0].passed, false);
+  assert.equal(after.checks[0].label.abkai, "manj");
+  assert.equal(after.checks[0].answer.abkai, "manju");
+  assert.deepEqual(after.accuracy, [{ scriptClass: "regular", answered: 1, passed: 0, accuracy: 0.8 }]);
+});
+
+test("a reviewer can correct a disputed check, which regrades it", async () => {
+  const client = await loggedIn("person@example.com");
+  const reviewer = await loggedIn("reviewer@example.com", { role: "reviewer" });
+  const user = await userId("person@example.com");
+  const [check, hidden] = await labelChecks(user, ["manj", "manj"]);
+  await labelOthers(user, 25, 1.5);
+  // Only the first check has 25 labels after it.
+  const dispute = (id: unknown, body: object = {}) =>
+    client.request("/api/profile/disputes", {
+      method: "POST",
+      body: { kind: "check", id, category: "manchu", transcription: "manj", note: "No u", ...body },
+    });
+  assert.equal((await dispute(hidden)).status, 409);
+  assert.equal((await dispute(check, { category: "nonsense" })).status, 400);
+  assert.equal((await dispute(check)).status, 201);
+  assert.equal((await dispute(check)).status, 409);
+
+  assert.equal((await client.request("/api/review/disputes")).status, 403);
+  const [item] = (await (await reviewer.request("/api/review/disputes")).json()).items;
+  assert.equal(item.proposed.abkai, "manj");
+  assert.equal(item.answer.abkai, "manju");
+  assert.deepEqual(item.graded, { total: 1, passed: 0 });
+
+  const resolve = (body: object) => reviewer.request(`/api/review/disputes/${item.id}`, { method: "POST", body });
+  assert.equal((await resolve({ outcome: "corrected" })).status, 400);
+  assert.equal((await resolve({ outcome: "corrected", category: "manchu", transcription: "manj" })).status, 204);
+  assert.equal((await resolve({ outcome: "upheld" })).status, 409);
+
+  const known = await KnownLabel.findOne({ wordImage: check }).orFail();
+  assert.equal(known.manchu, abkaiToManchu("manj").text);
+  assert.equal(known.history?.[0]?.manchu, "ᠮᠠᠨᠵᡠ");
+  const profile = await (await client.request("/api/profile")).json();
+  assert.equal(profile.checks[0].passed, true);
+  assert.equal(profile.checks[0].dispute, "corrected");
+  assert.equal(profile.disputes[0].outcome, "corrected");
+});
+
+test("a withdrawn check stops grading, and nobody resolves their own dispute", async () => {
+  const reviewer = await loggedIn("reviewer@example.com", { role: "reviewer" });
+  const user = await userId("reviewer@example.com");
+  const [check] = await labelChecks(user, ["manj"]);
+  await labelOthers(user, 25, 5);
+  const body = { kind: "check", id: check, category: "illegible" };
+  assert.equal((await reviewer.request("/api/profile/disputes", { method: "POST", body })).status, 201);
+  const [item] = (await (await reviewer.request("/api/review/disputes")).json()).items;
+  const resolve = (client: Client) =>
+    client.request(`/api/review/disputes/${item.id}`, { method: "POST", body: { outcome: "withdrawn" } });
+  assert.equal((await resolve(reviewer)).status, 409);
+
+  const admin = await loggedIn("admin@example.com", { role: "admin" });
+  assert.equal((await resolve(admin)).status, 204);
+  assert.equal((await KnownLabel.findOne({ wordImage: check }).orFail()).state, "withdrawn");
+  assert.deepEqual((await (await reviewer.request("/api/profile")).json()).checks, []);
+});
+
+test("a disputed quiz image can be withdrawn but not corrected", async () => {
+  await makeBank(3);
+  const client = await loggedIn("person@example.com", {}, false);
+  const { item } = await (await client.request("/api/training/regular/next")).json();
+  const body = { kind: "quiz", id: item.id, category: "manchu", transcription: "manjv" };
+  assert.equal((await client.request("/api/profile/disputes", { method: "POST", body })).status, 409);
+  await answerQuiz(client, WRONG);
+  assert.equal((await client.request("/api/profile/disputes", { method: "POST", body })).status, 201);
+
+  const admin = await loggedIn("admin@example.com", { role: "admin" });
+  const [dispute] = (await (await admin.request("/api/review/disputes")).json()).items;
+  assert.equal(dispute.kind, "quiz");
+  const resolve = (outcome: string) =>
+    admin.request(`/api/review/disputes/${dispute.id}`, {
+      method: "POST",
+      body: { outcome, category: "manchu", transcription: "manjv" },
+    });
+  assert.equal((await resolve("corrected")).status, 409);
+  assert.equal((await resolve("withdrawn")).status, 204);
+  assert.equal((await TrainingItem.findById(item.id).orFail()).active, false);
 });

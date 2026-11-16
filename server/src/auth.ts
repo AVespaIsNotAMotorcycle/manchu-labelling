@@ -43,3 +43,13 @@ export function requireAdmin(_request: Request, response: Response, next: NextFu
   }
   next();
 }
+
+/** Reviewers settle disagreements and disputes. Admins can do everything reviewers can. */
+export function requireReviewer(_request: Request, response: Response, next: NextFunction) {
+  const { role } = currentUser(response);
+  if (role !== "reviewer" && role !== "admin") {
+    response.status(403).json({ error: "Reviewers only" });
+    return;
+  }
+  next();
+}

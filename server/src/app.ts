@@ -5,6 +5,8 @@ import { requireUser } from "./auth.ts";
 import { adminRouter } from "./routes/admin.ts";
 import { createAuthRouter } from "./routes/auth.ts";
 import { labellingRouter } from "./routes/labelling.ts";
+import { profileRouter } from "./routes/profile.ts";
+import { reviewRouter } from "./routes/review.ts";
 import { trainingRouter } from "./routes/training.ts";
 
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -47,6 +49,8 @@ export function createApp(options: AppOptions): express.Express {
   app.use("/api/auth", createAuthRouter(options.loginAttempts ?? DEFAULT_LOGIN_ATTEMPTS));
   app.use("/api/labelling", labellingRouter);
   app.use("/api/training", trainingRouter);
+  app.use("/api/profile", profileRouter);
+  app.use("/api/review", reviewRouter);
   app.use("/api/admin", adminRouter);
 
   app.get("/api/images/:key", requireUser, (request, response) => {

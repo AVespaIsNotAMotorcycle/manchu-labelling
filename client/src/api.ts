@@ -117,9 +117,9 @@ export interface HeldBackItem {
   labelers: number;
 }
 
-export const getHeldBack = () => request<{ items: HeldBackItem[] }>("/api/admin/held-back");
+export const getHeldBack = () => request<{ items: HeldBackItem[] }>("/api/review/held-back");
 export const decideHeldBack = (item: HeldBackItem, decision: "yes" | "no") =>
-  request<void>(`/api/admin/held-back/${item.id}`, {
+  request<void>(`/api/review/held-back/${item.id}`, {
     method: "POST",
     body: { decision, category: item.category, manchu: item.manchu },
   });

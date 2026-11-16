@@ -110,7 +110,7 @@ export async function reviewAgreement(
       wordImage,
       category,
       manchu,
-      origin: `Held-back word: ${labelers.length} labelers agreed (${labelers.join(", ")}), confirmed by admin ${reviewer}`,
+      origin: `Held-back word: ${labelers.length} labelers agreed (${labelers.join(", ")}), confirmed by reviewer ${reviewer}`,
     });
   }
   await HeldBackReview.create({ wordImage, reviewer, decision, category, manchu, labelers });
