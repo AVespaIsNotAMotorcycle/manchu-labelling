@@ -8,9 +8,9 @@ import type { Types } from "mongoose";
 type Id = Types.ObjectId;
 
 /** Images a user labels before the check rate drops, so that trust has a sample early on. */
-const EARLY_IMAGES = 100;
-const EARLY_CHECK_RATE = 0.2;
-const LATER_CHECK_RATE = 0.08;
+export const EARLY_IMAGES = 100;
+export const EARLY_CHECK_RATE = 0.2;
+export const LATER_CHECK_RATE = 0.08;
 
 /** The share of a user's next images that are hidden checks, given how many they have labelled. */
 export function checkRate(labelled: number): number {

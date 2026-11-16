@@ -14,7 +14,10 @@
     "split-real-training": "node src/scripts/split-real-training.ts",
     "import-known-labels": "node src/scripts/import-known-labels.ts",
     "check-results": "node src/scripts/check-results.ts",
-    "hold-back": "node src/scripts/hold-back.ts"
+    "hold-back": "node src/scripts/hold-back.ts",
+    "set-volume": "node src/scripts/set-volume.ts",
+    "export-release": "node src/scripts/export-release.ts",
+    "set-release-doi": "node src/scripts/set-release-doi.ts"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

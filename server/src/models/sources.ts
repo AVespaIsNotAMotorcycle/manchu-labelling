@@ -3,6 +3,8 @@ import { model, Schema, type InferSchemaType } from "mongoose";
 export const PRODUCTION_TYPES = ["woodblock", "movable_type", "manuscript", "other"] as const;
 export const SCRIPT_TYPES = ["regular", "running", "memorial", "seal", "other"] as const;
 export type ScriptClass = (typeof SCRIPT_TYPES)[number];
+/** Splits are made by volume, so that one hand or printing is never in both training and test data. */
+export const SPLITS = ["train", "validation", "test"] as const;
 
 export function isScriptClass(value: unknown): value is ScriptClass {
   return (SCRIPT_TYPES as readonly unknown[]).includes(value);
@@ -23,7 +25,14 @@ const volumeSchema = new Schema(
       statement: { type: String, required: true },
       attribution: { type: String, required: true },
       permanentLink: { type: String, required: true },
+      /**
+       * A short license name for the scans, such as `PDM-1.0`. Volumes under a noncommercial license go
+       * in a separate package.
+       */
+      license: String,
     },
+    /** The dataset split. It cannot change once a release has used it. */
+    split: { type: String, enum: SPLITS },
   },
   { timestamps: true },
 );

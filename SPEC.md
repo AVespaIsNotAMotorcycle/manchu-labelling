@@ -435,6 +435,12 @@ font must have permission from its rights holder or be removed.**
   annotator ID and whether it counted), `volumes.jsonl`, a data card as `README.md` in Hugging Face's
   format, `CONTRIBUTORS.md`, and license files. The owner uploads it to Zenodo or Hugging Face and
   records the DOI with a command.
+- As built: `set-volume` sets a volume's split, license, and rights status, and `export-release` writes
+  the folder and a record in `releases` with the parameters used, the commit, counts, and checksums.
+  `set-release-doi` records the DOI once, in `releaseDois`. Annotator IDs need `ANNOTATOR_ID_SECRET`,
+  which must never change. Final statuses are `known` (a retired check's expert answer), `reviewed`,
+  `agreed`, `single`, and `unsettled` (no final label). Words with no labels are left out. A release
+  that mixes licenses refuses to include a noncommercial one.
 - Past releases cannot be changed, so a name that was published stays in that version.
 
 ## 10. Architecture
@@ -478,7 +484,8 @@ dataset hub such as Hugging Face.
 | `quizResets` | Each time a user chose to take the quiz again |
 | `disputes` | Disputed check and quiz answers, and their outcomes |
 | `users` | Account, role, license agreement, credit preference |
-| `releases` | Version, parameters used, DOI |
+| `releases` | Version, parameters used, volumes and their splits, counts, and checksums |
+| `releaseDois` | The DOI recorded for each release after upload |
 
 ### Data rules
 
