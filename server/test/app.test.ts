@@ -1227,3 +1227,32 @@ test("the next image can be handed out early, and becomes the current one after 
   assert.equal((await get("next")).id, upcoming.id);
   assert.notEqual((await get("upcoming")).id, upcoming.id);
 });
+
+test("admins see unpublished labelled images with every label, but not checks or released words", async () => {
+  const admin = await loggedIn("admin@example.com", { role: "admin" });
+  const labeler = await loggedIn("labeler@example.com");
+  assert.equal((await labeler.request("/api/admin/labelled")).status, 403);
+  await labelBy(imageId, 2, manju);
+  const check = await makeCheck();
+  await labelBy(check, 1, { category: "illegible" });
+  const page = (await WordImage.findById(imageId).orFail()).page;
+  const released = await makeWord("88888888-8888-4888-8888-888888888888.jpg", page, { word: 5 });
+  await labelBy(released._id, 1, { category: "chinese" });
+  const { ReleasedWord } = await import("../src/models/releases.ts");
+  await ReleasedWord.create({ version: "0.1.0", instance: released.instance });
+
+  const body = await (await admin.request("/api/admin/labelled")).json();
+  assert.equal(body.total, 1);
+  assert.deepEqual(body.counts, { agreed: 1 });
+  const [item] = body.items;
+  assert.equal(item.id, String(imageId));
+  assert.equal(item.status, "agreed");
+  assert.equal(item.answer.abkai, "manju");
+  assert.equal(item.labels.length, 2);
+  assert.match(item.labels[0].labeler, /@example\.com$/);
+  assert.equal(item.labels[0].trusted, true);
+  assert.equal(item.context.box.width, 3);
+
+  assert.deepEqual((await (await admin.request("/api/admin/labelled?status=single")).json()).items, []);
+  assert.equal((await admin.request("/api/admin/labelled?status=nonsense")).status, 400);
+});

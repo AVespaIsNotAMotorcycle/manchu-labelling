@@ -192,6 +192,8 @@ test("exports settled words and every label, and leaves out checks, held-back, a
   assert.match(sums, /[0-9a-f]{64} {2}words\.jsonl/);
   assert.equal(sums.trim().split("\n").length, 9);
 
+  const { ReleasedWord } = await import("../src/models/releases.ts");
+  assert.equal(await ReleasedWord.countDocuments({ version: "0.1.0" }), 3);
   const release = await Release.findOne({ version: "0.1.0" }).orFail();
   assert.equal(release.volumes[0]?.split, "train");
   await assert.rejects(run(), /already exists/);

@@ -39,7 +39,7 @@ export function Invites() {
   }
 
   return (
-    <main className="invites">
+    <section className="invites">
       <h2>Invite someone</h2>
       <form className="account-form" onSubmit={submit}>
         <label>
@@ -113,6 +113,6 @@ export function Invites() {
           </tbody>
         </table>
       )}
-    </main>
+    </section>
   );
 }

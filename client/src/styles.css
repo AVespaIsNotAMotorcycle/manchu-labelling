@@ -909,3 +909,43 @@ button.danger:focus:enabled {
   list-style: none;
   font-size: 1.1rem;
 }
+
+.labelled-images {
+  display: grid;
+  gap: 1rem;
+}
+
+.labelled-images h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.labelled-images > label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.labelled-images > label select {
+  width: auto;
+  margin-top: 0;
+}
+
+.labelled {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.labelled p {
+  margin: 0 0 0.5rem;
+}
+
+.pager {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}

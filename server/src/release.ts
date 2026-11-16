@@ -11,7 +11,7 @@ import { dataCard, licenseText, type CardData } from "./data-card.ts";
 import { HOLD_BACK_RATE } from "./held-back.ts";
 import { WordImage, WordInstance } from "./models/crops.ts";
 import { Annotation, KnownLabel, LabelReview } from "./models/labels.ts";
-import { Release } from "./models/releases.ts";
+import { Release, ReleasedWord } from "./models/releases.ts";
 import { Page, Volume } from "./models/sources.ts";
 import { User } from "./models/users.ts";
 import { EARLY_CHECK_RATE, EARLY_IMAGES, LATER_CHECK_RATE } from "./queue.ts";
@@ -367,5 +367,6 @@ export async function exportRelease(options: ReleaseOptions) {
     counts,
     checksums,
   });
+  await ReleasedWord.insertMany(included.map(({ instance }) => ({ version, instance: instance._id })));
   return counts;
 }

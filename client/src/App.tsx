@@ -11,7 +11,7 @@ import {
 import { Account as AccountPage } from "./components/account/Account.tsx";
 import { ForgotPassword, Register, ResetPassword, VerifyEmail } from "./components/account/PublicPages.tsx";
 import { FontPicker } from "./components/FontPicker.tsx";
-import { Invites } from "./components/Invites.tsx";
+import { Admin } from "./components/Admin.tsx";
 import { Labelling } from "./components/Labelling.tsx";
 import { LicensePrompt } from "./components/LicensePrompt.tsx";
 import { Login } from "./components/Login.tsx";
@@ -88,7 +88,7 @@ function Workspace(props: {
         )}
         {view === "progress" && <Profile />}
         {view === "review" && canReview && <Review />}
-        {view === "admin" && isAdmin && <Invites />}
+        {view === "admin" && isAdmin && <Admin />}
         {view === "account" && (
           <AccountPage account={props.account} onChange={props.onAccountChange} onDeleted={props.onDeleted} />
         )}

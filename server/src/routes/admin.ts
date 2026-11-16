@@ -3,7 +3,9 @@ import { Types } from "mongoose";
 
 import { currentUser, requireAdmin, requireUser } from "../auth.ts";
 import { AccountError, createInvite, inviteUrl } from "../accounts.ts";
+import type { Status } from "../consensus.ts";
 import { ruleOnReview } from "../crop-reviews.ts";
+import { labelledImages } from "../labelled.ts";
 import { CropReview, WordImage } from "../models/crops.ts";
 import { Invite, ROLES } from "../models/users.ts";
 
@@ -97,4 +99,17 @@ adminRouter.delete("/invites/:id", async (request, response) => {
   }
   await Invite.updateOne({ _id: request.params.id, usedAt: { $exists: false } }, { expiresAt: new Date() });
   response.status(204).end();
+});
+
+const STATUSES = ["unlabelled", "single", "pending", "agreed", "needs_review", "reviewed"];
+
+/** Labelled images not yet in any release, with their labels, newest first. */
+adminRouter.get("/labelled", async (request, response) => {
+  const status = typeof request.query.status === "string" && request.query.status ? request.query.status : undefined;
+  const page = Number(request.query.page ?? 0);
+  if ((status && !STATUSES.includes(status)) || !Number.isInteger(page) || page < 0) {
+    response.status(400).json({ error: "This filter is not valid" });
+    return;
+  }
+  response.json(await labelledImages({ status: status as Status | undefined, page }));
 });

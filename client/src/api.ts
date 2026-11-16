@@ -272,3 +272,32 @@ export const getInvites = () => request<{ items: InviteSummary[] }>("/api/admin/
 export const createInvite = (body: { email?: string; role: string; note?: string }) =>
   post<{ url: string; expiresAt: string }>("/api/admin/invites", body);
 export const withdrawInvite = (id: string) => request<void>(`/api/admin/invites/${id}`, { method: "DELETE" });
+
+export type LabelStatus = "unlabelled" | "single" | "pending" | "agreed" | "needs_review" | "reviewed";
+
+/** A labelled image that no release has published yet, as an admin sees it. */
+export interface LabelledImage {
+  id: string;
+  imageUrl: string;
+  context: PageContext;
+  volume?: string;
+  pageIndex: number;
+  position: { side: string; column: number; word: number };
+  heldBack: boolean;
+  status: LabelStatus;
+  answer?: Answer;
+  reviewer?: string;
+  labels: (Answer & {
+    labeler: string;
+    createdAt: string;
+    trusted: boolean;
+    sure: boolean;
+    production?: string;
+    script?: string;
+  })[];
+}
+
+export const getLabelled = (status: string, page: number) =>
+  request<{ total: number; page: number; pageSize: number; counts: Record<string, number>; items: LabelledImage[] }>(
+    `/api/admin/labelled?${new URLSearchParams({ status, page: String(page) })}`,
+  );

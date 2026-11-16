@@ -177,7 +177,9 @@ Decided by the owner on 2026-11-16. With few labelers expected, redundancy start
 - **Scaling limit:** the queue settles every labelled image on each request. With 40,000 labels it
   takes about 0.4 seconds, and it grows with the number of labels. Before the dataset is much larger,
   keep each image's status in a collection updated when a label is saved, which can always be rebuilt
-  from history.
+  from history. To hide the wait meanwhile, the client asks for the image after the current one
+  (`/api/labelling/upcoming`) and loads its crop while the user labels, so saving moves straight on. A
+  user has at most two images open.
 - An image is given to at most 6 labelers, so that labels from users who are not trusted cannot keep it
   in the queue forever. Approved by the owner on 2026-11-16.
 - As built, held-back agreements also only count labelers who were trusted when they labelled.
@@ -464,6 +466,9 @@ font must have permission from its rights holder or be removed.**
   annotator ID and whether it counted), `volumes.jsonl`, a data card as `README.md` in Hugging Face's
   format, `CONTRIBUTORS.md`, and license files. The owner uploads it to Zenodo or Hugging Face and
   records the DOI with a command.
+- Admins can see every labelled word that no release has published yet, with each labeler's latest
+  label, whether it counted, and the word's status, under **Admin → Labelled images**. Hidden checks and
+  words moved to the quiz are left out.
 - As built: `set-volume` sets a volume's split, license, and rights status, and `export-release` writes
   the folder and a record in `releases` with the parameters used, the commit, counts, and checksums.
   `set-release-doi` records the DOI once, in `releaseDois`. Annotator IDs need `ANNOTATOR_ID_SECRET`,
@@ -513,6 +518,7 @@ dataset hub such as Hugging Face.
 | `quizResets` | Each time a user chose to take the quiz again |
 | `disputes` | Disputed check and quiz answers, and their outcomes |
 | `users` | Account, role, license agreement, credit preference |
+| `releasedWords` | Which words each release published |
 | `releases` | Version, parameters used, volumes and their splits, counts, and checksums |
 | `releaseDois` | The DOI recorded for each release after upload |
 

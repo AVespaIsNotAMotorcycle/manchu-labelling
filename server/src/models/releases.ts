@@ -44,5 +44,14 @@ const releaseDoiSchema = new Schema({
 });
 releaseDoiSchema.plugin(appendOnly);
 
+/** Which words each release published, so that the app can tell published words from the rest. */
+const releasedWordSchema = new Schema({
+  version: { type: String, required: true },
+  instance: { type: Schema.Types.ObjectId, ref: "WordInstance", required: true, index: true },
+});
+releasedWordSchema.index({ version: 1, instance: 1 }, { unique: true });
+releasedWordSchema.plugin(appendOnly);
+
 export const Release = model("Release", releaseSchema);
+export const ReleasedWord = model("ReleasedWord", releasedWordSchema);
 export const ReleaseDoi = model("ReleaseDoi", releaseDoiSchema);
