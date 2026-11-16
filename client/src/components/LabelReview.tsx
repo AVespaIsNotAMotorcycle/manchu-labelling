@@ -4,7 +4,8 @@ import { getLabelReviews, reviewLabels, type LabelReviewItem, type Reading } fro
 import { AnswerForm, type AnswerInput } from "./AnswerForm.tsx";
 import { AnswerText } from "./AnswerText.tsx";
 import { CropImage } from "./CropImage.tsx";
-import { PageImage } from "./PageView.tsx";
+import { PagePreview } from "./PageView.tsx";
+import { useKeyShortcuts } from "../shortcuts.ts";
 
 const asInput = (reading: Reading): AnswerInput => ({
   category: reading.category,
@@ -15,7 +16,7 @@ const asInput = (reading: Reading): AnswerInput => ({
  * Lets a reviewer give the final answer for an image whose labelers did not agree. The readings are
  * shown without names. The answer should record what is written, not the intended word.
  */
-export function LabelReview() {
+export function LabelReview({ onChange }: { onChange?: () => void }) {
   const [items, setItems] = useState<LabelReviewItem[] | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -37,6 +38,7 @@ export function LabelReview() {
     try {
       await reviewLabels(item.id, answer);
       setItems((current) => current?.slice(1) ?? null);
+      onChange?.();
       setOwnAnswer(false);
     } catch (failure) {
       setError((failure as Error).message);
@@ -45,6 +47,20 @@ export function LabelReview() {
       setBusy(false);
     }
   }
+
+  /** Moves the current image to the end of the list, so that a hard one does not block the rest. */
+  function skip() {
+    setItems((current) => (current && current.length > 1 ? [...current.slice(1), current[0] as LabelReviewItem] : current));
+    setOwnAnswer(false);
+  }
+
+  const shortcuts: Record<string, () => void> = { s: skip, d: () => setOwnAnswer(true) };
+  item?.readings.slice(0, 9).forEach((reading, index) => {
+    shortcuts[String(index + 1)] = () => {
+      if (!busy) decide(asInput(reading));
+    };
+  });
+  useKeyShortcuts(shortcuts, Boolean(item) && !ownAnswer);
 
   return (
     <section className="held-back">
@@ -61,15 +77,18 @@ export function LabelReview() {
           <div className="comparison">
             <figure>
               <figcaption>Image</figcaption>
-              <CropImage src={item.imageUrl} />
+              <CropImage src={item.imageUrl} alt="The word whose labels disagree" />
             </figure>
+            <PagePreview context={item.context} />
           </div>
           <div className="fields">
             <p className="hint">{items.length === 50 ? "50 or more" : items.length} waiting</p>
             <ul className="readings">
-              {item.readings.map((reading) => (
+              {item.readings.map((reading, index) => (
                 <li key={`${reading.category}:${reading.manchu ?? ""}`}>
-                  <AnswerText answer={reading} />
+                  <span>
+                    {index < 9 && <kbd>{index + 1}</kbd>} <AnswerText answer={reading} />
+                  </span>
                   <span className="hint">
                     {reading.count} {reading.count === 1 ? "labeler" : "labelers"}
                     {reading.unsure > 0 && `, ${reading.unsure} unsure`}
@@ -83,12 +102,17 @@ export function LabelReview() {
             {ownAnswer ? (
               <AnswerForm idPrefix={`review-${item.id}`} submitLabel="Save my answer" onSubmit={decide} />
             ) : (
-              <button type="button" className="secondary" onClick={() => setOwnAnswer(true)}>
-                Give a different answer
-              </button>
+              <div className="actions">
+                <button type="button" className="secondary" onClick={() => setOwnAnswer(true)}>
+                  Give a different answer (D)
+                </button>
+                <button type="button" className="secondary" disabled={items.length < 2} onClick={skip}>
+                  Skip for now (S)
+                </button>
+              </div>
             )}
+            <p className="hint shortcut-hint">Press a number to use that reading.</p>
           </div>
-          <PageImage context={item.context} />
         </div>
       )}
     </section>

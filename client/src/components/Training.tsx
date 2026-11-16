@@ -450,9 +450,11 @@ export function Training(props: {
                 <button type="button" onClick={onQualified} autoFocus>
                   Start labelling
                 </button>
-                <button type="button" className="secondary" onClick={() => setPractice(true)}>
-                  Practise with synthetic images
-                </button>
+                {progress?.phases[0]?.passed && (
+                  <button type="button" className="secondary" onClick={() => setPractice(true)}>
+                    Practise with synthetic images
+                  </button>
+                )}
                 <button type="button" className="secondary" onClick={() => setKeepGoing(true)}>
                   Keep answering quiz images
                 </button>

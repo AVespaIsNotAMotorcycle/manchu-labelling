@@ -1313,3 +1313,11 @@ test("a labeler can change only their last answer, within 30 minutes, keeping th
   assert.deepEqual(await (await client.request("/api/labelling/last")).json(), { last: null });
   assert.equal((await change(second, { category: "illegible" })).status, 409);
 });
+
+test("reviewers see how much is waiting in each part of the review", async () => {
+  const reviewer = await loggedIn("reviewer@example.com", { role: "reviewer" });
+  await labelBy(imageId, 1, manju);
+  await labelBy(imageId, 1, { category: "illegible" });
+  await labelBy(imageId, 1, { category: "bad_crop" });
+  assert.deepEqual(await (await reviewer.request("/api/review/counts")).json(), { labels: 1, disputes: 0, heldBack: 0 });
+});

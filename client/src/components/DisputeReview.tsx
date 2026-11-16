@@ -4,13 +4,14 @@ import { getDisputes, resolveDispute, type DisputeItem } from "../api.ts";
 import { AnswerForm } from "./AnswerForm.tsx";
 import { AnswerText } from "./AnswerText.tsx";
 import { CropImage } from "./CropImage.tsx";
-import { PageImage } from "./PageView.tsx";
+import { PagePreview } from "./PageView.tsx";
+import { useKeyShortcuts } from "../shortcuts.ts";
 
 /**
  * Lets a reviewer settle disputes. Upholding changes nothing. Correcting replaces a check's answer, and
  * withdrawing stops the image counting. Grades and qualification follow automatically.
  */
-export function DisputeReview() {
+export function DisputeReview({ onChange }: { onChange?: () => void }) {
   const [items, setItems] = useState<DisputeItem[] | null>(null);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
@@ -33,6 +34,7 @@ export function DisputeReview() {
     try {
       await resolveDispute(item.id, { outcome, ...answer, note: note || undefined });
       setItems((current) => current?.slice(1) ?? null);
+      onChange?.();
       setNote("");
       setCorrecting(false);
     } catch (failure) {
@@ -42,6 +44,22 @@ export function DisputeReview() {
       setBusy(false);
     }
   }
+
+  /** Moves the current dispute to the end of the list, so that a hard one does not block the rest. */
+  function skip() {
+    setItems((current) => (current && current.length > 1 ? [...current.slice(1), current[0] as DisputeItem] : current));
+    setCorrecting(false);
+  }
+
+  useKeyShortcuts(
+    {
+      u: () => !busy && decide("upheld"),
+      c: () => item?.kind === "check" && setCorrecting(true),
+      w: () => !busy && decide("withdrawn"),
+      s: skip,
+    },
+    Boolean(item) && !correcting,
+  );
 
   return (
     <section className="held-back">
@@ -57,8 +75,9 @@ export function DisputeReview() {
           <div className="comparison">
             <figure>
               <figcaption>{item.kind === "quiz" ? "Quiz image" : "Hidden check"}</figcaption>
-              <CropImage src={item.imageUrl} />
+              <CropImage src={item.imageUrl} alt="The disputed word" />
             </figure>
+            {item.context && <PagePreview context={item.context} />}
           </div>
           <div className="fields">
             <p className="hint">{items.length === 50 ? "50 or more" : items.length} waiting</p>
@@ -106,20 +125,22 @@ export function DisputeReview() {
             ) : (
               <div className="actions">
                 <button type="button" disabled={busy} onClick={() => decide("upheld")}>
-                  The answer stands
+                  The answer stands (U)
                 </button>
                 {item.kind === "check" && (
                   <button type="button" className="secondary" disabled={busy} onClick={() => setCorrecting(true)}>
-                    Correct the answer
+                    Correct the answer (C)
                   </button>
                 )}
                 <button type="button" className="secondary" disabled={busy} onClick={() => decide("withdrawn")}>
-                  {item.kind === "quiz" ? "Take it out of the quiz" : "Stop using it as a check"}
+                  {item.kind === "quiz" ? "Take it out of the quiz" : "Stop using it as a check"} (W)
+                </button>
+                <button type="button" className="secondary" disabled={items.length < 2} onClick={skip}>
+                  Skip for now (S)
                 </button>
               </div>
             )}
           </div>
-          {item.context && <PageImage context={item.context} />}
         </div>
       )}
     </section>

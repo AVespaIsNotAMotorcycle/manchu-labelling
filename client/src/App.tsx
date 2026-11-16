@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   acceptLicense,
   getAccount,
+  getReviewCounts,
   getTrainingStatus,
   logOut,
+  type ReviewCounts,
   type Account,
   type TrainingStatus,
 } from "./api.ts";
@@ -34,14 +36,25 @@ function Workspace(props: {
   onStatusChange: () => void;
 }) {
   const { status, onViewChange, onQualified, onStatusChange } = props;
-  const canReview = props.account.role === "admin" || props.account.role === "reviewer";
-  const isAdmin = props.account.role === "admin";
   const canLabel = status.qualified.length > 0;
   const view = props.view ?? (canLabel ? "label" : "train");
+  const canReview = props.account.role === "admin" || props.account.role === "reviewer";
+  const isAdmin = props.account.role === "admin";
+  const [counts, setCounts] = useState<ReviewCounts | null>(null);
+  const refreshCounts = useCallback(() => {
+    if (!canReview || props.account.twoFactorRequired) return;
+    getReviewCounts()
+      .then(setCounts)
+      .catch(() => setCounts(null));
+  }, [canReview, props.account.twoFactorRequired]);
+  useEffect(refreshCounts, [refreshCounts, view]);
+  const waiting = counts ? counts.labels + counts.disputes + counts.heldBack : 0;
+  // The letter forms help when reading Manchu, and only take room elsewhere.
+  const showReference = view === "label" || view === "train" || view === "review";
   const scriptClass = status.classes[0]?.scriptClass;
 
   return (
-    <div className="workspace">
+    <div className={showReference ? "workspace" : "workspace without-reference"}>
       <div className="work">
         <nav className="tabs" aria-label="Work">
           <button
@@ -62,6 +75,7 @@ function Workspace(props: {
           {canReview && (
             <button type="button" aria-current={view === "review"} onClick={() => onViewChange("review")}>
               Review
+              {waiting > 0 && <span className="count"> ({waiting})</span>}
             </button>
           )}
           {isAdmin && (
@@ -70,6 +84,11 @@ function Workspace(props: {
             </button>
           )}
         </nav>
+        {!canLabel && (
+          <p className="hint tab-hint">
+            The Label tab opens once you pass the quiz in Training.
+          </p>
+        )}
         {props.account.twoFactorRequired && view !== "account" && (canReview || isAdmin) && (
           <p className="notice" role="status">
             Reviewers and admins must turn on two-factor authentication before using their tools.{" "}
@@ -87,7 +106,7 @@ function Workspace(props: {
           />
         )}
         {view === "progress" && <Profile />}
-        {view === "review" && canReview && <Review />}
+        {view === "review" && canReview && <Review counts={counts} onChange={refreshCounts} />}
         {view === "admin" && isAdmin && <Admin />}
         {view === "account" && (
           <AccountPage account={props.account} onChange={props.onAccountChange} onDeleted={props.onDeleted} />
@@ -99,7 +118,7 @@ function Workspace(props: {
             <p className="status">There are no quizzes yet.</p>
           ))}
       </div>
-      <Reference />
+      {showReference && <Reference />}
     </div>
   );
 }

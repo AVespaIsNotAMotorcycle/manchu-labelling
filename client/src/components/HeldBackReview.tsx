@@ -12,13 +12,13 @@ import { AnswerText } from "./AnswerText.tsx";
 import { categoryName } from "./CategoryField.tsx";
 import { CropImage } from "./CropImage.tsx";
 import { ManchuText } from "./ManchuText.tsx";
-import { PageImage } from "./PageView.tsx";
+import { PagePreview } from "./PageView.tsx";
 
 /**
  * Lets a reviewer confirm the answers that labelers agreed on for held-back images. A yes makes the image a
  * hidden check, so it should only be given when the image shows exactly that answer.
  */
-export function HeldBackReview() {
+export function HeldBackReview({ onChange }: { onChange?: () => void }) {
   const [items, setItems] = useState<HeldBackItem[] | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -31,6 +31,11 @@ export function HeldBackReview() {
   useEffect(load, [load]);
 
   const item = items?.[0];
+
+  /** Moves the current image to the end of the list, so that a hard one does not block the rest. */
+  const skip = useCallback(() => {
+    setItems((current) => (current && current.length > 1 ? [...current.slice(1), current[0] as HeldBackItem] : current));
+  }, []);
   const decide = useCallback(
     async (decision: "yes" | "no") => {
       if (!item || busy) return;
@@ -39,6 +44,7 @@ export function HeldBackReview() {
       try {
         await decideHeldBack(item, decision);
         setItems((current) => current?.slice(1) ?? null);
+      onChange?.();
       } catch (failure) {
         setError((failure as Error).message);
         load();
@@ -56,10 +62,11 @@ export function HeldBackReview() {
       const key = event.key.toLowerCase();
       if (key === "y") decide("yes");
       else if (key === "n") decide("no");
+      else if (key === "s") skip();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [decide]);
+  }, [decide, skip]);
 
   return (
     <section className="held-back">
@@ -76,8 +83,9 @@ export function HeldBackReview() {
           <div className="comparison">
             <figure>
               <figcaption>Image</figcaption>
-              <CropImage src={item.imageUrl} />
+              <CropImage src={item.imageUrl} alt="The held-back word" />
             </figure>
+            <PagePreview context={item.context} />
             <figure>
               <figcaption>Agreed answer</figcaption>
               {item.manchu ? (
@@ -101,9 +109,11 @@ export function HeldBackReview() {
               <button type="button" className="secondary" disabled={busy} onClick={() => decide("no")}>
                 No (N)
               </button>
+              <button type="button" className="secondary" disabled={items.length < 2} onClick={skip}>
+                Skip for now (S)
+              </button>
             </div>
           </div>
-          <PageImage context={item.context} />
         </div>
       )}
       <RecentDecisions key={items?.length} onUndone={load} />

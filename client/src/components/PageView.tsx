@@ -33,3 +33,19 @@ export function PageView({ imageId, small }: { imageId: string; small?: boolean 
   if (!context) return <p className="status">Loading page…</p>;
   return <PageImage context={context} small={small} />;
 }
+
+/** The page beside a crop, small at first, with a button to see it larger. */
+export function PagePreview({ context }: { context: PageContext }) {
+  const [large, setLarge] = useState(false);
+  return (
+    <figure className={large ? "page-preview large" : "page-preview"}>
+      <figcaption>
+        On the page{" "}
+        <button type="button" className="link" onClick={() => setLarge(!large)}>
+          {large ? "smaller" : "larger"}
+        </button>
+      </figcaption>
+      <PageImage context={context} small={!large} />
+    </figure>
+  );
+}

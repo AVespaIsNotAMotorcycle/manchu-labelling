@@ -209,3 +209,13 @@ reviewRouter.post("/labels/:id", async (request, response) => {
   }
   response.status(204).end();
 });
+
+/** How much is waiting in each part of the review, for the counts on the tabs. */
+reviewRouter.get("/counts", async (_request, response) => {
+  const [labels, disputes, heldBack] = await Promise.all([
+    imagesForReview(currentUser(response)._id, Number.MAX_SAFE_INTEGER),
+    Dispute.countDocuments({ resolution: { $exists: false } }),
+    agreementsToReview(Number.MAX_SAFE_INTEGER),
+  ]);
+  response.json({ labels: labels.length, disputes, heldBack: heldBack.length });
+});

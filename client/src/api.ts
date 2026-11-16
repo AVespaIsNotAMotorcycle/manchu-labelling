@@ -311,3 +311,11 @@ export const getLabelled = (status: string, page: number) =>
   request<{ total: number; page: number; pageSize: number; counts: Record<string, number>; items: LabelledImage[] }>(
     `/api/admin/labelled?${new URLSearchParams({ status, page: String(page) })}`,
   );
+
+export interface ReviewCounts {
+  labels: number;
+  disputes: number;
+  heldBack: number;
+}
+
+export const getReviewCounts = () => request<ReviewCounts>("/api/review/counts");

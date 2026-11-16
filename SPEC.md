@@ -149,6 +149,16 @@ Manjurists.
 - There is **no dictionary check**. Manchu is agglutinative, so valid words may be missing from any
   dictionary, and a check would also pull labelers away from recording what is written.
 - Each image is labeled independently, and labelers cannot see other people's answers.
+- As built, 2026-11-16: the labelling screen keeps a small view of the page beside the crop, has zoom,
+  contrast, and brightness controls remembered in the browser, and types a letter into the Abkai field
+  when the user clicks it in the letter forms. Alt shortcuts choose the category, mark a field as unsure,
+  enlarge the page, zoom, and change the last answer, so they never clash with typing Abkai. The screen
+  counts the images labelled in a session and suggests a break every 50.
+- Wrong quiz answers show the reading letter by letter, marking letters missed and added. Once a user
+  qualifies, the quiz stops and offers labelling, practice, or more quiz images.
+- Review screens show the page beside the crop, take single-key shortcuts, and let a reviewer skip an
+  item for now. The Review tab shows how many items wait in each section. The letter forms only appear
+  on the Label, Training, and Review tabs.
 - Common words are limited, so that they do not dominate the data.
 
 ### Reaching a final label

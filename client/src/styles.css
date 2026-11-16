@@ -386,7 +386,8 @@ dd {
 
 .labelling {
   display: grid;
-  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  /* The form keeps enough width to read, and the images wrap beside it instead. */
+  grid-template-columns: minmax(0, auto) minmax(min(18rem, 100%), 1fr);
   gap: 2rem;
 }
 
@@ -1014,6 +1015,11 @@ kbd {
   font-size: 0.85rem;
 }
 
+.password-field {
+  display: grid;
+  gap: 0.25rem;
+}
+
 .password-row {
   display: flex;
   gap: 0.5rem;
@@ -1056,4 +1062,45 @@ kbd {
 .diff-extra {
   color: var(--wrong);
   text-decoration: line-through 3px;
+}
+
+.workspace.without-reference {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.tab-hint {
+  margin: -0.5rem 0 1rem;
+}
+
+.tabs .count {
+  font-weight: 700;
+}
+
+.page-preview.large {
+  flex-basis: 100%;
+}
+
+.page-preview.large .page-view {
+  max-width: 40rem;
+}
+
+.shortcut-hint {
+  margin: 0;
+}
+
+.reading-and-page {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+/* The controls under a crop wrap to its width, so they do not push the reading aside. */
+.crop-figure {
+  width: min-content;
+  min-width: 11rem;
+}
+
+/* The crop keeps its own size here, limited by the window rather than the narrow column. */
+.crop-figure .crop {
+  max-width: calc(100vw - 2rem);
 }

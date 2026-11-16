@@ -149,25 +149,27 @@ function LabelForm(props: {
   return (
     <form className="labelling" onSubmit={submit} ref={form}>
       <div className="comparison">
-        <figure>
+        <figure className="crop-figure">
           <figcaption>Image</figcaption>
           <CropImage src={image.imageUrl} alt="The word to label" view={view} />
           <CropViewControls view={view} onChange={props.onViewChange} />
         </figure>
-        {/* Kept when the image is not Manchu, so that the fields do not move. */}
-        <figure>
-          <figcaption>Your reading</figcaption>
-          <ManchuText text={isManchu ? preview.text : ""} className="preview" />
-        </figure>
-        <figure className="page-thumbnail">
-          <figcaption>
-            On the page{" "}
-            <button type="button" className="link" onClick={() => setLargePage(!largePage)}>
-              {largePage ? "smaller" : "larger"}
-            </button>
-          </figcaption>
-          {!largePage && <PageView imageId={image.id} small />}
-        </figure>
+        <div className="reading-and-page">
+          {/* Kept when the image is not Manchu, so that the fields do not move. */}
+          <figure>
+            <figcaption>Your reading</figcaption>
+            <ManchuText text={isManchu ? preview.text : ""} className="preview" />
+          </figure>
+          <figure className="page-thumbnail">
+            <figcaption>
+              On the page{" "}
+              <button type="button" className="link" onClick={() => setLargePage(!largePage)}>
+                {largePage ? "smaller" : "larger"}
+              </button>
+            </figcaption>
+            {!largePage && <PageView imageId={image.id} small />}
+          </figure>
+        </div>
       </div>
 
       <div className="fields">

@@ -1,6 +1,9 @@
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 
-/** A password field with a button to show what was typed. */
+/**
+ * A password field with a button to show what was typed. The button sits outside the label, so the
+ * field's name is just its label.
+ */
 export function PasswordInput(props: {
   label: ReactNode;
   value: string;
@@ -9,11 +12,13 @@ export function PasswordInput(props: {
   describedBy?: string;
 }) {
   const [shown, setShown] = useState(false);
+  const id = useId();
   return (
-    <label className="password-field">
-      {props.label}
+    <div className="password-field">
+      <label htmlFor={id}>{props.label}</label>
       <span className="password-row">
         <input
+          id={id}
           type={shown ? "text" : "password"}
           autoComplete={props.autoComplete}
           required
@@ -25,11 +30,12 @@ export function PasswordInput(props: {
           type="button"
           className="secondary"
           aria-pressed={shown}
+          aria-label={shown ? "Hide password" : "Show password"}
           onClick={() => setShown(!shown)}
         >
           {shown ? "Hide" : "Show"}
         </button>
       </span>
-    </label>
+    </div>
   );
 }
