@@ -23,6 +23,8 @@ await mongoose.connection.syncIndexes();
 createApp({
   sessionSecret: sessionSecret(),
   secureCookies: production,
+  persistentRateLimits: true,
+  origin: process.env.APP_ORIGIN,
   sessionStore: MongoStore.create({
     client: mongoose.connection.getClient() as never,
     collectionName: "sessions",

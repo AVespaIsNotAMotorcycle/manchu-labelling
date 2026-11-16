@@ -9,10 +9,12 @@ import { profileRouter } from "./routes/profile.ts";
 import { reviewRouter } from "./routes/review.ts";
 import { trainingRouter } from "./routes/training.ts";
 import { HashingBusyError } from "./passwords.ts";
+import { MongoRateLimitStore } from "./rate-limit.ts";
 import { requireSameOrigin, securityHeaders } from "./security.ts";
 
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const DEFAULT_LOGIN_ATTEMPTS = 10;
+const DEFAULT_ACCOUNT_ATTEMPTS = 10;
 const IMAGE_KEY = /^[0-9a-f-]{36}\.(jpg|png)$/;
 
 export interface AppOptions {
@@ -23,6 +25,10 @@ export interface AppOptions {
   storageDirectory: string;
   /** Login attempts allowed per address in 15 minutes. */
   loginAttempts?: number;
+  /** Failed logins allowed per account in an hour. */
+  accountAttempts?: number;
+  /** Keeps rate limit counts in MongoDB, so that they survive a restart. */
+  persistentRateLimits?: boolean;
   /** The address users reach the app at, such as https://labels.example.org. Derived from the request if unset. */
   origin?: string;
 }
@@ -52,7 +58,14 @@ export function createApp(options: AppOptions): express.Express {
   app.get("/api/health", (_request, response) => {
     response.json({ status: "ok" });
   });
-  app.use("/api/auth", createAuthRouter(options.loginAttempts ?? DEFAULT_LOGIN_ATTEMPTS));
+  app.use(
+    "/api/auth",
+    createAuthRouter({
+      loginAttempts: options.loginAttempts ?? DEFAULT_LOGIN_ATTEMPTS,
+      accountAttempts: options.accountAttempts ?? DEFAULT_ACCOUNT_ATTEMPTS,
+      rateLimitStore: options.persistentRateLimits ? (prefix) => new MongoRateLimitStore(prefix) : undefined,
+    }),
+  );
   app.use("/api/labelling", labellingRouter);
   app.use("/api/training", trainingRouter);
   app.use("/api/profile", profileRouter);

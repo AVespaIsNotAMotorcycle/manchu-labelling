@@ -1109,3 +1109,53 @@ test("turns away logins when too many passwords are being checked at once", asyn
   assert.equal(busy.length, 3);
   assert.ok(busy.every((result) => (result as PromiseRejectedResult).reason instanceof HashingBusyError));
 });
+
+test("login limits are kept in MongoDB, and also count failures per account from any address", async (context) => {
+  const limited = createApp({
+    sessionSecret: "test",
+    secureCookies: false,
+    storageDirectory: storage,
+    loginAttempts: 1000,
+    accountAttempts: 2,
+    persistentRateLimits: true,
+  }).listen(0);
+  context.after(() => limited.close());
+  await new Promise((resolve) => limited.once("listening", resolve));
+  const url = `http://localhost:${(limited.address() as AddressInfo).port}/api/auth/login`;
+  const attempt = (email: string, password = "wrong") =>
+    fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+  await makeUser("person@example.com");
+  context.mock.method(console, "warn", () => {});
+
+  assert.equal((await attempt("person@example.com", PASSWORD)).status, 200);
+  assert.equal((await attempt("Person@example.com ")).status, 401);
+  assert.equal((await attempt("person@example.com")).status, 401);
+  assert.equal((await attempt("person@example.com", PASSWORD)).status, 429);
+  assert.equal((await attempt("other@example.com")).status, 401);
+
+  const { RateLimit } = await import("../src/rate-limit.ts");
+  const record = await RateLimit.findById("login-account:account:person@example.com").lean();
+  assert.equal(record?.hits, 3);
+  assert.ok(record && record.resetAt > new Date());
+  const warnings = (console.warn as unknown as { mock: { calls: { arguments: string[] }[] } }).mock.calls;
+  assert.match(warnings[0]?.arguments[0] ?? "", /"event":"login.account_limited"/);
+});
+
+test("a rate limit window starts again once it ends", async () => {
+  const { MongoRateLimitStore } = await import("../src/rate-limit.ts");
+  const store = new MongoRateLimitStore("test");
+  store.init({ windowMs: 50 } as never);
+  assert.equal((await store.increment("key")).totalHits, 1);
+  assert.equal((await store.increment("key")).totalHits, 2);
+  await store.decrement("key");
+  assert.equal((await store.get("key"))?.totalHits, 1);
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  assert.equal(await store.get("key"), undefined);
+  assert.equal((await store.increment("key")).totalHits, 1);
+  await store.resetKey("key");
+  assert.equal(await store.get("key"), undefined);
+});

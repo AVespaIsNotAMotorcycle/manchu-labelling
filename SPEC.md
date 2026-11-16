@@ -395,8 +395,11 @@ labels under the pseudonymous ID, since they are already licensed CC BY 4.0.
 - Open registration through a verified process, with email verification
 - Password reset
 - Two-factor authentication or passkeys, required for reviewers and admins
-- A rate limit that also tracks each account, and alerts on repeated failures
-- Rate limit counts that survive a server restart, kept in MongoDB rather than in memory
+- ~~A rate limit that also tracks each account, and alerts on repeated failures~~ Done: 10 failed logins
+  per account an hour from any address, beside 10 attempts per address in 15 minutes. Hitting either
+  logs a JSON alert, which is also emailed to `ALERT_EMAIL` once email is set up.
+- ~~Rate limit counts that survive a server restart, kept in MongoDB rather than in memory~~ Done, in
+  `rateLimits`, which MongoDB clears as windows end.
 - ~~A limit on concurrent password hashing, so that a burst of logins cannot delay other requests~~
   Done: two hashes run at once, 20 more wait, and the rest get a 503.
 - MongoDB authentication and a private network in production

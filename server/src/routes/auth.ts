@@ -1,11 +1,14 @@
 import { Router } from "express";
-import { rateLimit } from "express-rate-limit";
+import { rateLimit, type Store } from "express-rate-limit";
+
+import { alert } from "../alerts.ts";
 
 import { currentUser, requireUser } from "../auth.ts";
 import { User } from "../models/users.ts";
 import { DECOY_HASH, verifyPassword } from "../passwords.ts";
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const ACCOUNT_WINDOW_MS = 60 * 60 * 1000;
 
 function describe(user: ReturnType<typeof currentUser>) {
   return {
@@ -15,18 +18,51 @@ function describe(user: ReturnType<typeof currentUser>) {
   };
 }
 
-export function createAuthRouter(loginAttempts: number): Router {
+export interface AuthOptions {
+  /** Login attempts allowed per address in 15 minutes. */
+  loginAttempts: number;
+  /** Failed logins allowed per account in an hour, from any address. */
+  accountAttempts: number;
+  /** Makes a store for a limiter. Without one, counts are kept in memory. */
+  rateLimitStore?: (prefix: string) => Store;
+}
+
+const normalizeEmail = (email: unknown) => (typeof email === "string" ? email.trim().toLowerCase() : "");
+
+export function createAuthRouter(options: AuthOptions): Router {
   const authRouter = Router();
+
+  const byAddress = rateLimit({
+    windowMs: LOGIN_WINDOW_MS,
+    limit: options.loginAttempts,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    store: options.rateLimitStore?.("login-address"),
+    handler: (request, response, _next, limitOptions) => {
+      alert("login.address_limited", { address: request.ip });
+      response.status(limitOptions.statusCode).json({ error: "Too many attempts. Please try again later." });
+    },
+  });
+  // Counts only failures, so that an attacker spreading guesses across addresses is still stopped.
+  const byAccount = rateLimit({
+    windowMs: ACCOUNT_WINDOW_MS,
+    limit: options.accountAttempts,
+    standardHeaders: false,
+    legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    keyGenerator: (request) => `account:${normalizeEmail(request.body?.email)}`,
+    store: options.rateLimitStore?.("login-account"),
+    handler: (request, response, _next, limitOptions) => {
+      alert("login.account_limited", { email: normalizeEmail(request.body?.email), address: request.ip });
+      response.status(limitOptions.statusCode).json({ error: "Too many attempts. Please try again later." });
+    },
+  });
 
   /** There is deliberately no registration route. Accounts are created with the `create-user` script. */
   authRouter.post(
     "/login",
-    rateLimit({
-      windowMs: LOGIN_WINDOW_MS,
-      limit: loginAttempts,
-      standardHeaders: "draft-8",
-      legacyHeaders: false,
-    }),
+    byAddress,
+    byAccount,
     async (request, response) => {
       const { email, password } = request.body ?? {};
       if (typeof email !== "string" || typeof password !== "string") {
