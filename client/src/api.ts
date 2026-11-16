@@ -2,6 +2,9 @@ export interface Account {
   email: string;
   role: string;
   licenseAccepted: boolean;
+  twoFactor: boolean;
+  /** Reviewers and admins must turn on two-factor authentication before using their tools. */
+  twoFactorRequired: boolean;
 }
 
 export interface LabelImage {
@@ -80,12 +83,16 @@ async function request<T>(path: string, options?: { method: string; body?: unkno
     const body = await response.json().catch(() => null);
     throw new ApiError(body?.error ?? "Something went wrong", response.status);
   }
-  return (response.status === 204 || response.status === 201 ? undefined : response.json()) as T;
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 export const getAccount = () => request<Account>("/api/auth/me");
+/** Logging in returns the account, or asks for a two-factor code first. */
 export const logIn = (email: string, password: string) =>
-  request<Account>("/api/auth/login", { method: "POST", body: { email, password } });
+  request<Account | { twoFactor: true }>("/api/auth/login", { method: "POST", body: { email, password } });
+export const logInWithCode = (code: string) =>
+  request<Account>("/api/auth/login/two-factor", { method: "POST", body: { code } });
 export const logOut = () => request<void>("/api/auth/logout", { method: "POST" });
 export const acceptLicense = () => request<Account>("/api/auth/accept-license", { method: "POST" });
 export const getTrainingStatus = () => request<TrainingStatus>("/api/training/status");
@@ -227,3 +234,39 @@ export const reviewLabels = (id: string, answer: { category: string; transcripti
 
 export const setCreditName = (name: string | null) =>
   request<{ creditName: string | null }>("/api/profile/credit", { method: "PUT", body: { name } });
+
+const post = <T = void>(path: string, body: object) => request<T>(path, { method: "POST", body });
+
+export const register = (invite: string, email: string, password: string) =>
+  post("/api/auth/register", { invite, email, password });
+export const verifyEmail = (token: string) => post("/api/auth/verify-email", { token });
+export const resendVerification = (email: string) => post("/api/auth/resend-verification", { email });
+export const forgotPassword = (email: string) => post("/api/auth/forgot-password", { email });
+export const resetPassword = (token: string, password: string) =>
+  post("/api/auth/reset-password", { token, password });
+export const changePassword = (current: string, password: string) =>
+  post("/api/auth/change-password", { current, password });
+export const deleteAccount = (password: string) => post("/api/auth/delete-account", { password });
+export const startTwoFactor = (password: string) =>
+  post<{ secret: string; uri: string }>("/api/auth/two-factor/setup", { password });
+export const enableTwoFactor = (code: string) =>
+  post<{ recoveryCodes: string[] }>("/api/auth/two-factor/enable", { code });
+export const disableTwoFactor = (password: string, code: string) =>
+  post("/api/auth/two-factor/disable", { password, code });
+export const newRecoveryCodes = (password: string) =>
+  post<{ recoveryCodes: string[] }>("/api/auth/two-factor/recovery-codes", { password });
+
+export interface InviteSummary {
+  id: string;
+  email?: string;
+  role: string;
+  note?: string;
+  createdAt: string;
+  expiresAt: string;
+  status: "open" | "used" | "expired";
+}
+
+export const getInvites = () => request<{ items: InviteSummary[] }>("/api/admin/invites");
+export const createInvite = (body: { email?: string; role: string; note?: string }) =>
+  post<{ url: string; expiresAt: string }>("/api/admin/invites", body);
+export const withdrawInvite = (id: string) => request<void>(`/api/admin/invites/${id}`, { method: "DELETE" });

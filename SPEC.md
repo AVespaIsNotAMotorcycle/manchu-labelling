@@ -383,8 +383,7 @@ and a symbol. The rules live in `packages/passwords`, so that the server and any
 a password apply the same check. The server always checks. The login form does not, since it does not
 set a password.
 
-**Accounts are for testing only.** There is no registration route, and accounts are created from the
-command line. The following must be done before anyone other than test users gets an account. Decided
+**Accounts are for testing only** until this list is done. Registration is by invite only. The following must be done before anyone other than test users gets an account. Decided
 by the owner on 2026-11-16: registration is by **invite links** from admins, with email
 verification; email goes through a generic SMTP sender; two-factor uses authenticator-app codes
 (TOTP) with recovery codes, with passkeys later; new passwords are checked against Have I Been Pwned's
@@ -392,9 +391,15 @@ range API, which only receives the first 5 characters of the password's SHA-1 ha
 cannot be reached; deleting an account removes the email, password, and credit name, and keeps the
 labels under the pseudonymous ID, since they are already licensed CC BY 4.0.
 
-- Open registration through a verified process, with email verification
-- Password reset
-- Two-factor authentication or passkeys, required for reviewers and admins
+- ~~Open registration through a verified process, with email verification~~ Done: admins make invite
+  links (in the Admin tab, or with `create-invite`), which work once for 14 days and can be tied to an
+  email. New accounts cannot log in until they confirm their email. Registering an email that already
+  has an account emails its owner instead, so the response reveals nothing.
+- ~~Password reset~~ Done: links last an hour, work once, and sign out every session. Users can also
+  change their password from the Account page.
+- ~~Two-factor authentication or passkeys, required for reviewers and admins~~ Done with TOTP: secrets
+  are encrypted with `SECRETS_KEY`, each code works once, there are 10 single-use recovery codes, and
+  reviewer and admin tools refuse staff without it in production. Passkeys are left for later.
 - ~~A rate limit that also tracks each account, and alerts on repeated failures~~ Done: 10 failed logins
   per account an hour from any address, beside 10 attempts per address in 15 minutes. Hitting either
   logs a JSON alert, which is also emailed to `ALERT_EMAIL` once email is set up.
@@ -403,12 +408,15 @@ labels under the pseudonymous ID, since they are already licensed CC BY 4.0.
 - ~~A limit on concurrent password hashing, so that a burst of logins cannot delay other requests~~
   Done: two hashes run at once, 20 more wait, and the rest get a 503.
 - MongoDB authentication and a private network in production
-- A check of new passwords against known breaches
+- ~~A check of new passwords against known breaches~~ Done, in the one function every new password
+  passes through.
 - CSRF review, security headers, and HTTPS everywhere in production. Done in the API: changes need
   JSON bodies and are refused when `Origin` or `Sec-Fetch-Site` shows another site, on top of
   `SameSite=Lax` cookies, and responses carry a strict policy. HTTPS and the client's headers come
   with the deployment files.
-- A review of how account and contribution data can be deleted
+- ~~A review of how account and contribution data can be deleted~~ Done: users can delete their
+  account from the Account page, which removes the email, password, credit name, and two-factor
+  secrets and keeps labels, disputes, and reviews under the account's ID.
 - A security review of the whole authentication flow
 - Permission for any font served to users (see below)
 

@@ -8,7 +8,10 @@ import {
   type Account,
   type TrainingStatus,
 } from "./api.ts";
+import { Account as AccountPage } from "./components/account/Account.tsx";
+import { ForgotPassword, Register, ResetPassword, VerifyEmail } from "./components/account/PublicPages.tsx";
 import { FontPicker } from "./components/FontPicker.tsx";
+import { Invites } from "./components/Invites.tsx";
 import { Labelling } from "./components/Labelling.tsx";
 import { LicensePrompt } from "./components/LicensePrompt.tsx";
 import { Login } from "./components/Login.tsx";
@@ -16,11 +19,14 @@ import { Profile } from "./components/Profile.tsx";
 import { Reference } from "./components/Reference.tsx";
 import { Review } from "./components/Review.tsx";
 import { Training } from "./components/Training.tsx";
+import { navigate, useLocation } from "./navigation.ts";
 
-type View = "label" | "train" | "progress" | "review";
+type View = "label" | "train" | "progress" | "review" | "admin" | "account";
 
 function Workspace(props: {
-  canReview: boolean;
+  account: Account;
+  onAccountChange: () => void;
+  onDeleted: () => void;
   status: TrainingStatus;
   view: View | null;
   onViewChange: (view: View) => void;
@@ -28,6 +34,8 @@ function Workspace(props: {
   onStatusChange: () => void;
 }) {
   const { status, onViewChange, onQualified, onStatusChange } = props;
+  const canReview = props.account.role === "admin" || props.account.role === "reviewer";
+  const isAdmin = props.account.role === "admin";
   const canLabel = status.qualified.length > 0;
   const view = props.view ?? (canLabel ? "label" : "train");
   const scriptClass = status.classes[0]?.scriptClass;
@@ -51,12 +59,25 @@ function Workspace(props: {
           <button type="button" aria-current={view === "progress"} onClick={() => onViewChange("progress")}>
             Progress
           </button>
-          {props.canReview && (
+          {canReview && (
             <button type="button" aria-current={view === "review"} onClick={() => onViewChange("review")}>
               Review
             </button>
           )}
+          {isAdmin && (
+            <button type="button" aria-current={view === "admin"} onClick={() => onViewChange("admin")}>
+              Admin
+            </button>
+          )}
         </nav>
+        {props.account.twoFactorRequired && view !== "account" && (canReview || isAdmin) && (
+          <p className="notice" role="status">
+            Reviewers and admins must turn on two-factor authentication before using their tools.{" "}
+            <button type="button" className="link" onClick={() => onViewChange("account")}>
+              Set it up in your account
+            </button>
+          </p>
+        )}
         {view === "label" && (
           <Labelling
             onNotQualified={() => {
@@ -66,7 +87,11 @@ function Workspace(props: {
           />
         )}
         {view === "progress" && <Profile />}
-        {view === "review" && props.canReview && <Review />}
+        {view === "review" && canReview && <Review />}
+        {view === "admin" && isAdmin && <Invites />}
+        {view === "account" && (
+          <AccountPage account={props.account} onChange={props.onAccountChange} onDeleted={props.onDeleted} />
+        )}
         {view === "train" &&
           (scriptClass ? (
             <Training scriptClass={scriptClass} onQualified={onQualified} onReset={onStatusChange} />
@@ -79,7 +104,27 @@ function Workspace(props: {
   );
 }
 
+/** Pages reached from links in emails, shown whether or not someone is logged in. */
+function PublicPage({ location }: { location: URL }) {
+  const token = location.searchParams.get("token") ?? "";
+  switch (location.pathname) {
+    case "/register":
+      return <Register invite={location.searchParams.get("invite") ?? ""} />;
+    case "/verify-email":
+      return <VerifyEmail token={token} />;
+    case "/forgot-password":
+      return <ForgotPassword />;
+    case "/reset-password":
+      return <ResetPassword token={token} />;
+    default:
+      return null;
+  }
+}
+
+const PUBLIC_PATHS = new Set(["/register", "/verify-email", "/forgot-password", "/reset-password"]);
+
 export function App() {
+  const location = useLocation();
   const [account, setAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(true);
   const [training, setTraining] = useState<TrainingStatus | null>(null);
@@ -98,8 +143,24 @@ export function App() {
     getTrainingStatus().then(setTraining);
   }, [licenseAccepted]);
 
+  function signedOut() {
+    setAccount(null);
+    setTraining(null);
+    setView(null);
+  }
+
+  if (PUBLIC_PATHS.has(location.pathname)) return <PublicPage location={location} />;
   if (loading) return <p className="status">Loading…</p>;
-  if (!account) return <Login onLogIn={setAccount} />;
+  if (!account) {
+    return (
+      <Login
+        onLogIn={(next) => {
+          setAccount(next);
+          navigate("/");
+        }}
+      />
+    );
+  }
 
   return (
     <>
@@ -108,17 +169,12 @@ export function App() {
         <FontPicker />
         <span>
           {account.email}{" "}
-          <button
-            type="button"
-            className="link"
-            onClick={() =>
-              logOut().then(() => {
-                setAccount(null);
-                setTraining(null);
-                setView(null);
-              })
-            }
-          >
+          {account.licenseAccepted && (
+            <button type="button" className="link" onClick={() => setView("account")}>
+              Account
+            </button>
+          )}{" "}
+          <button type="button" className="link" onClick={() => logOut().then(signedOut)}>
             Log out
           </button>
         </span>
@@ -129,7 +185,11 @@ export function App() {
       {account.licenseAccepted && !training && <p className="status">Loading…</p>}
       {account.licenseAccepted && training && (
         <Workspace
-          canReview={account.role === "admin" || account.role === "reviewer"}
+          account={account}
+          onAccountChange={() => {
+            getAccount().then(setAccount);
+          }}
+          onDeleted={signedOut}
           status={training}
           view={view}
           onViewChange={setView}

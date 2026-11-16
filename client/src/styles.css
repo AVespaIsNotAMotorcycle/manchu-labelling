@@ -853,3 +853,59 @@ textarea {
   display: grid;
   gap: 0.75rem;
 }
+
+.account,
+.invites {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 36rem;
+}
+
+.account h2,
+.invites h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+}
+
+.account-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.account-form label,
+.card label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+button.danger {
+  border-color: var(--wrong);
+}
+
+button.danger:hover:enabled,
+button.danger:focus:enabled {
+  background: var(--wrong);
+  color: var(--surface);
+}
+
+.qr {
+  width: 200px;
+  height: 200px;
+  image-rendering: pixelated;
+}
+
+.secret,
+.invite-link {
+  overflow-wrap: anywhere;
+  font-size: 1.1rem;
+}
+
+.recovery-codes ul {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  gap: 0.25rem 2rem;
+  padding: 0;
+  list-style: none;
+  font-size: 1.1rem;
+}

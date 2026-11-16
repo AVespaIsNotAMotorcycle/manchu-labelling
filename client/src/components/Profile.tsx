@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { getProfile, setCreditName, type DisputeStatus, type PastCheck, type Profile as ProfileData } from "../api.ts";
+import { getProfile, type DisputeStatus, type PastCheck, type Profile as ProfileData } from "../api.ts";
 import { AnswerText } from "./AnswerText.tsx";
 import { DisputeForm } from "./DisputeForm.tsx";
 
@@ -57,59 +57,6 @@ function PastCheckRow({ check, onDisputed }: { check: PastCheck; onDisputed: () 
         )}
       </div>
     </li>
-  );
-}
-
-/** Lets the user opt in to being credited by name in releases, or opt out again. */
-function CreditName({ initial }: { initial: string | null }) {
-  const [name, setName] = useState(initial ?? "");
-  const [saved, setSaved] = useState(initial);
-  const [error, setError] = useState("");
-
-  async function save(next: string | null) {
-    setError("");
-    try {
-      const result = await setCreditName(next);
-      setSaved(result.creditName);
-      setName(result.creditName ?? "");
-    } catch (failure) {
-      setError((failure as Error).message);
-    }
-  }
-
-  return (
-    <section className="credit">
-      <h2>Credit</h2>
-      <p className="hint">
-        Releases list contributors who ask to be named. Names are listed on their own and are not linked
-        to your labels or your accuracy. A name in a past release stays there.
-      </p>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          save(name.trim() || null);
-        }}
-      >
-        <label>
-          Name to credit
-          <input value={name} maxLength={100} onChange={(event) => setName(event.target.value)} />
-        </label>
-        {error && <p role="alert">{error}</p>}
-        <div className="actions">
-          <button type="submit" disabled={(name.trim() || null) === saved}>
-            Save
-          </button>
-          {saved && (
-            <button type="button" className="secondary" onClick={() => save(null)}>
-              Do not credit me
-            </button>
-          )}
-        </div>
-        <p className="hint" role="status">
-          {saved ? `You will be credited as ${saved}.` : "You will not be credited by name."}
-        </p>
-      </form>
-    </section>
   );
 }
 
@@ -205,7 +152,6 @@ export function Profile() {
         </>
       )}
 
-      <CreditName initial={profile.creditName} />
     </main>
   );
 }
