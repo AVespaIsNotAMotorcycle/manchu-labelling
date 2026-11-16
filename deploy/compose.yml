@@ -1,0 +1,64 @@
+# Production: the API, MongoDB, and Caddy on one server. See README.md in this folder.
+name: manchu-labelling
+
+services:
+  mongo:
+    image: mongo:8.2
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?Set MONGO_APP_PASSWORD in .env}
+    volumes:
+      - mongo-data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/init.js:ro
+    # Only on the internal network, so MongoDB cannot be reached from outside the server.
+    networks: [database]
+
+  api:
+    build:
+      context: ..
+      target: api
+    restart: unless-stopped
+    environment:
+      MONGODB_URI: mongodb://app:${MONGO_APP_PASSWORD}@mongo:27017/manchu-labelling?authSource=manchu-labelling
+      APP_ORIGIN: https://${DOMAIN:?Set DOMAIN in .env}
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
+      SECRETS_KEY: ${SECRETS_KEY:?Set SECRETS_KEY in .env}
+      SMTP_URL: ${SMTP_URL:?Set SMTP_URL in .env}
+      MAIL_FROM: ${MAIL_FROM:?Set MAIL_FROM in .env}
+      ALERT_EMAIL: ${ALERT_EMAIL:-}
+      STORAGE_DIRECTORY: /data/storage
+      PORT: "3001"
+    volumes:
+      - storage:/data/storage
+    depends_on: [mongo]
+    networks: [database, web]
+
+  web:
+    build:
+      context: ..
+      target: web
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [api]
+    networks: [web]
+
+networks:
+  database:
+    internal: true
+  web: {}
+
+volumes:
+  mongo-data:
+  storage:
+  caddy-data:
+  caddy-config:

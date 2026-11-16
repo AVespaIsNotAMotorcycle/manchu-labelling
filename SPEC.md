@@ -407,13 +407,14 @@ labels under the pseudonymous ID, since they are already licensed CC BY 4.0.
   `rateLimits`, which MongoDB clears as windows end.
 - ~~A limit on concurrent password hashing, so that a burst of logins cannot delay other requests~~
   Done: two hashes run at once, 20 more wait, and the rest get a 503.
-- MongoDB authentication and a private network in production
+- ~~MongoDB authentication and a private network in production~~ Done in `deploy/`: MongoDB is only on
+  an internal Docker network, and the API logs in as a user that can only use the app's database.
 - ~~A check of new passwords against known breaches~~ Done, in the one function every new password
   passes through.
 - CSRF review, security headers, and HTTPS everywhere in production. Done in the API: changes need
   JSON bodies and are refused when `Origin` or `Sec-Fetch-Site` shows another site, on top of
-  `SameSite=Lax` cookies, and responses carry a strict policy. HTTPS and the client's headers come
-  with the deployment files.
+  `SameSite=Lax` cookies, and responses carry a strict policy. In `deploy/`, Caddy serves everything
+  over HTTPS with HSTS and a content security policy for the client.
 - ~~A review of how account and contribution data can be deleted~~ Done: users can delete their
   account from the Account page, which removes the email, password, credit name, and two-factor
   secrets and keeps labels, disputes, and reviews under the account's ID.
@@ -541,7 +542,9 @@ Answered on 2026-11-16:
 1. **Manuscript known labels** are confirmed by reviewers or admins, ideally trained Manjurists. Moving
    candidate review from `review_candidates.py` into the app is left until after the first release.
 2. **Hosting:** one VPS running Docker Compose, with the API, MongoDB on a private Docker network,
-   and Caddy for HTTPS. Images are on R2, and a nightly `mongodump` goes to R2.
+   and Caddy for HTTPS. Images are on R2, and a nightly `mongodump` goes to R2. As built in `deploy/`,
+   images are served from the server's disk and synced to R2 nightly with the database dump. Serving
+   them from R2 needs a storage adapter, which is not built yet.
 3. **Undoing a held-back decision:** allowed, as described in section 7.
 
 None are open now.

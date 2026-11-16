@@ -1,0 +1,9 @@
+.git
+**/node_modules
+**/dist
+data
+.venv
+pipeline
+deploy/.env
+# Manchu fonts are all rights reserved. They stay out of every image until their rights holders agree.
+client/src/fonts

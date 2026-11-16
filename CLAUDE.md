@@ -54,6 +54,7 @@ npm run set-release-doi -w server -- 0.1.0 10.5281/zenodo.<id>    # after upload
 - `client`: React app built with Vite. Optional fonts go in `client/src/fonts/`, which is not in git
 - `pipeline`: offline Python jobs for fetching and segmenting scans
 - `data`: downloaded scans, generated crops, and local image storage, not in git
+- `deploy`: production Docker Compose, Caddy, and backups. See `deploy/README.md`
 
 ## Testing against a browser
 
