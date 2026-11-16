@@ -3,7 +3,8 @@ import { randomInt } from "node:crypto";
 import { UNREADABLE } from "@manchu-labelling/script";
 import type { Types } from "mongoose";
 
-import { passesCheck } from "./checks.ts";
+import { passesCheck, scriptClassOfImages } from "./checks.ts";
+import { loadTrust } from "./consensus.ts";
 import { WordInstance } from "./models/crops.ts";
 import { Annotation, HeldBackReview, KnownLabel, type Category } from "./models/labels.ts";
 
@@ -30,6 +31,7 @@ export interface Agreement {
 
 interface LatestLabel {
   user: Types.ObjectId;
+  createdAt?: Date;
   category: Category;
   transcription?: { manchu: string } | null;
   confidence?: { category?: string | null; transcription?: string | null } | null;
@@ -73,12 +75,13 @@ export async function agreementsToReview(limit = 50): Promise<Agreement[]> {
   const reviewed = [...decided.values()].filter(({ decision }) => decision !== "undo");
   const done = new Set([...known.map(String), ...reviewed.map(({ wordImage }) => String(wordImage))]);
   const open = crops.filter((crop) => !done.has(String(crop)));
-  const labels = await Annotation.find(
-    { wordImage: { $in: open } },
-    "wordImage user category transcription confidence",
-  )
-    .sort({ createdAt: 1, _id: 1 })
-    .lean();
+  const [labels, trust, scriptOf] = await Promise.all([
+    Annotation.find({ wordImage: { $in: open } }, "wordImage user category transcription confidence createdAt")
+      .sort({ createdAt: 1, _id: 1 })
+      .lean(),
+    loadTrust(),
+    scriptClassOfImages(open),
+  ]);
 
   // Each user's latest label counts, so a correction replaces what it corrects.
   const latest = new Map<string, Map<string, LatestLabel>>();
@@ -89,7 +92,12 @@ export async function agreementsToReview(limit = 50): Promise<Agreement[]> {
   }
   const agreements: Agreement[] = [];
   for (const crop of open) {
-    const answer = agreedAnswer([...(latest.get(String(crop))?.values() ?? [])]);
+    // Only labels from users who were trusted when they made them count towards the agreement.
+    const scriptClass = scriptOf.get(String(crop)) ?? "unknown";
+    const trusted = [...(latest.get(String(crop))?.values() ?? [])].filter((label) =>
+      trust.isTrusted(label.user, scriptClass, label.createdAt as Date),
+    );
+    const answer = agreedAnswer(trusted);
     if (answer) agreements.push({ wordImage: crop, ...answer });
     if (agreements.length >= limit) break;
   }

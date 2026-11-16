@@ -363,7 +363,7 @@ test("retired checks are not given, and known images never go to the ordinary qu
 async function labelBy(image: Types.ObjectId, count: number, label: object = { category: "chinese" }) {
   const before = await Annotation.countDocuments({ wordImage: image });
   for (let index = before; index < before + count; index += 1) {
-    const user = (await makeUser(`labeler${index}@example.com`))._id;
+    const user = (await makeUser(`labeler${index}-${new Types.ObjectId()}@example.com`))._id;
     await Assignment.create({ user, wordImage: image, submittedAt: new Date() });
     await Annotation.create({ wordImage: image, user, converterVersion: 1, ...label });
   }
@@ -1003,4 +1003,74 @@ test("a reviewer can undo a held-back yes, which withdraws the check, or a no, w
   // A withdrawn answer is not offered for review again.
   assert.equal(await waiting(), 0);
   assert.deepEqual((await (await reviewer.request("/api/review/held-back-decisions")).json()).items, []);
+});
+
+test("a disagreement gets a third label, then goes to a reviewer who gives the final answer", async () => {
+  const user = (await makeUser("person@example.com"))._id;
+  const manjv = { category: "manchu", transcription: { abkai: "manjv", manchu: abkaiToManchu("manjv").text } };
+  await labelBy(imageId, 1, manju);
+  await labelBy(imageId, 1, manjv);
+  assert.equal(String(await pickNextImage(user, ["regular"], never)), String(imageId));
+  await labelBy(imageId, 1, { category: "illegible" });
+  assert.equal(await pickNextImage(user, ["regular"], never), null);
+
+  const reviewer = await loggedIn("reviewer@example.com", { role: "reviewer" });
+  const labeler = await loggedIn("labeler@example.com");
+  assert.equal((await labeler.request("/api/review/labels")).status, 403);
+  const [item] = (await (await reviewer.request("/api/review/labels")).json()).items;
+  assert.equal(item.id, String(imageId));
+  assert.deepEqual(
+    item.readings.map(({ category, abkai, count }: { category: string; abkai?: string; count: number }) => [
+      category,
+      abkai,
+      count,
+    ]),
+    [
+      ["manchu", "manju", 1],
+      ["manchu", "manjv", 1],
+      ["illegible", undefined, 1],
+    ],
+  );
+  assert.equal(item.context.box.width, 3);
+
+  const decide = (body: object) => reviewer.request(`/api/review/labels/${imageId}`, { method: "POST", body });
+  assert.equal((await decide({ category: "manchu" })).status, 400);
+  assert.equal((await decide({ category: "manchu", transcription: "manju" })).status, 204);
+  assert.equal((await decide({ category: "manchu", transcription: "manju" })).status, 409);
+  assert.deepEqual((await (await reviewer.request("/api/review/labels")).json()).items, []);
+});
+
+test("reviewers do not review images they labelled, or hidden checks", async () => {
+  const reviewer = await loggedIn("reviewer@example.com", { role: "reviewer" });
+  const reviewerId = await userId("reviewer@example.com");
+  await Annotation.create({ wordImage: imageId, user: reviewerId, converterVersion: 1, category: "illegible" });
+  await labelBy(imageId, 1, manju);
+  await labelBy(imageId, 1, { category: "bad_crop" });
+  const items = async () => (await (await reviewer.request("/api/review/labels")).json()).items;
+  assert.deepEqual(await items(), []);
+
+  const check = await makeCheck();
+  await labelBy(check, 1, { category: "illegible" });
+  await labelBy(check, 1, { category: "bad_crop" });
+  await labelBy(check, 1, { category: "non_text" });
+  assert.deepEqual(await items(), []);
+});
+
+test("a held-back agreement only counts labelers who were trusted at the time", async () => {
+  const image = await WordImage.findById(imageId).orFail();
+  await WordInstance.updateOne({ _id: image.instance }, { heldBack: true });
+  const reviewer = await loggedIn("reviewer@example.com", { role: "reviewer" });
+  await labelBy(imageId, 2, manju);
+  const careless = (await makeUser("careless@example.com"))._id;
+  await labelChecks(careless, Array(10).fill("manjv"));
+  await Annotation.create({
+    wordImage: imageId,
+    user: careless,
+    converterVersion: 1,
+    ...manju,
+    createdAt: new Date(Date.now() + 60 * 60_000),
+  });
+  assert.deepEqual((await (await reviewer.request("/api/review/held-back")).json()).items, []);
+  await labelBy(imageId, 1, manju);
+  assert.equal((await (await reviewer.request("/api/review/held-back")).json()).items.length, 1);
 });

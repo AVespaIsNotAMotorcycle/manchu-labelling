@@ -170,6 +170,13 @@ Decided by the owner on 2026-11-16. With few labelers expected, redundancy start
 - **The reviewer screen** shows the image, its page, and the readings given, without names and with a
   count for each. The reviewer picks one or types their own, and the result has the status
   `reviewed`. Reviewers do not need to pass the quiz to review.
+- As built: statuses are `unlabelled`, `single`, `pending` (two labels that do not settle it),
+  `agreed`, `needs_review`, and `reviewed`. Two answers tied on the most labels do not agree.
+  Reviewers never see an image they labelled, hidden checks, or words awaiting a crop ruling. Each
+  reviewer answer is a new record in `labelReviews`, and the latest one counts.
+- **[Proposed]** An image is given to at most 6 labelers, so that labels from users who are not trusted
+  cannot keep it in the queue forever.
+- As built, held-back agreements also only count labelers who were trusted when they labelled.
 
 Images that have only one label can still be exported, marked with their status (section 9).
 
@@ -462,6 +469,7 @@ dataset hub such as Hugging Face.
 | `cropReviews` | Competing crops awaiting an admin's ruling, and the outcome |
 | `assignments` | Which user was given which image, with no sign of whether it is a check |
 | `knownLabels` | Answers, their origin, and their state (active, retired, corrected). The only record of which images are checks |
+| `labelReviews` | A reviewer's final answer for an image whose labels did not settle it |
 | `heldBackReviews` | A reviewer's yes, no, or undo on the answer that labelers agreed on for a held-back image |
 | `trainingItems` | Quiz images, their answers, and their sources |
 | `trainingAttempts` | Append-only quiz answers |

@@ -122,6 +122,27 @@ const heldBackReviewSchema = new Schema({
 heldBackReviewSchema.index({ wordImage: 1, createdAt: 1 });
 heldBackReviewSchema.plugin(appendOnly);
 
+/**
+ * A reviewer's final answer for an image whose labels did not settle it. Reviews are never changed. The
+ * latest one for an image counts.
+ */
+const labelReviewSchema = new Schema({
+  wordImage: { type: Schema.Types.ObjectId, ref: "WordImage", required: true, index: true },
+  reviewer: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  category: { type: String, enum: CATEGORIES, required: true },
+  transcription: textSchema,
+  createdAt: { type: Date, default: Date.now, immutable: true },
+});
+labelReviewSchema.pre("validate", function () {
+  if (this.category === "manchu" && !this.transcription) {
+    this.invalidate("transcription", "A Manchu answer needs a transcription");
+  }
+  if (this.transcription && abkaiToManchu(this.transcription.abkai).text !== this.transcription.manchu) {
+    this.invalidate("transcription", "Manchu text does not match the Abkai");
+  }
+});
+labelReviewSchema.plugin(appendOnly);
+
 /** Records that a user was given an image. This must never say whether the image is a check. */
 const assignmentSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: "User", required: true },
@@ -135,3 +156,4 @@ export const Annotation = model("Annotation", annotationSchema);
 export const KnownLabel = model("KnownLabel", knownLabelSchema);
 export const Assignment = model("Assignment", assignmentSchema);
 export const HeldBackReview = model("HeldBackReview", heldBackReviewSchema);
+export const LabelReview = model("LabelReview", labelReviewSchema);

@@ -203,3 +203,23 @@ export interface HeldBackDecision {
 export const getHeldBackDecisions = () =>
   request<{ items: HeldBackDecision[] }>("/api/review/held-back-decisions");
 export const undoHeldBack = (id: string) => request<void>(`/api/review/held-back/${id}/undo`, { method: "POST" });
+
+export interface Reading {
+  category: string;
+  manchu?: string;
+  abkai?: string;
+  count: number;
+  unsure: number;
+}
+
+/** An image whose labels did not settle it, waiting for a reviewer. */
+export interface LabelReviewItem {
+  id: string;
+  imageUrl: string;
+  context: PageContext;
+  readings: Reading[];
+}
+
+export const getLabelReviews = () => request<{ items: LabelReviewItem[] }>("/api/review/labels");
+export const reviewLabels = (id: string, answer: { category: string; transcription?: string }) =>
+  request<void>(`/api/review/labels/${id}`, { method: "POST", body: answer });

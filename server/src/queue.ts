@@ -1,15 +1,11 @@
 import { instancesUnderReview } from "./crop-reviews.ts";
+import { settleImages } from "./consensus.ts";
 import { WordImage, WordInstance } from "./models/crops.ts";
-import { Annotation, Assignment, KnownLabel } from "./models/labels.ts";
+import { Assignment, KnownLabel } from "./models/labels.ts";
 import { Page, Volume, type ScriptClass } from "./models/sources.ts";
 import type { Types } from "mongoose";
 
 type Id = Types.ObjectId;
-
-/** Each image needs this many independent labels before it leaves the queue. */
-const LABELS_PER_IMAGE = 2;
-/** Held-back images need one more, since their answers may become hidden checks. */
-const LABELS_PER_HELD_BACK_IMAGE = 3;
 
 /** Images a user labels before the check rate drops, so that trust has a sample early on. */
 const EARLY_IMAGES = 100;
@@ -44,23 +40,15 @@ export async function pickNextImage(
 ) {
   const volumes = await Volume.find({ script: { $in: [...scriptClasses] } }, "_id").lean();
   const pages = (await Page.distinct("_id", { volume: { $in: volumes.map(({ _id }) => _id) } })) as Id[];
-  const [underReview, seen, labelled, known, labelCounts, heldBack] = await Promise.all([
+  const [underReview, seen, labelled, known, settlements] = await Promise.all([
     instancesUnderReview(),
     Assignment.distinct("wordImage", { user }),
     Assignment.countDocuments({ user, submittedAt: { $ne: null } }),
     KnownLabel.find({}, "wordImage state").lean(),
-    Annotation.aggregate<{ _id: Id; users: number }>([
-      { $group: { _id: "$wordImage", users: { $addToSet: "$user" } } },
-      { $project: { users: { $size: "$users" } } },
-      { $match: { users: { $gte: LABELS_PER_IMAGE } } },
-    ]),
-    WordInstance.distinct("canonicalCrop", { heldBack: true }) as Promise<Id[]>,
+    settleImages(),
   ]);
-  const heldBackIds = new Set(heldBack.map(String));
-  const finished = labelCounts.filter(
-    ({ _id, users }) =>
-      users >= (heldBackIds.has(String(_id)) ? LABELS_PER_HELD_BACK_IMAGE : LABELS_PER_IMAGE),
-  );
+  // An image leaves the queue once its labels settle it, it waits for a reviewer, or it has enough.
+  const finished = [...settlements].filter(([, { wantsLabel }]) => !wantsLabel).map(([id]) => id);
 
   const eligible = (await WordInstance.distinct("canonicalCrop", {
     retired: { $ne: true },
@@ -69,7 +57,7 @@ export async function pickNextImage(
   const seenIds = new Set(seen.map(String));
   // Images with a known answer never need ordinary labels.
   const excluded = new Set(
-    [...seen, ...finished.map(({ _id }) => _id), ...known.map(({ wordImage }) => wordImage)].map(String),
+    [...seen, ...finished, ...known.map(({ wordImage }) => wordImage)].map(String),
   );
 
   const activeChecks = new Set(

@@ -7,6 +7,7 @@ import { currentUser, requireReviewer, requireUser } from "../auth.ts";
 import { DisputeError, resolveDispute } from "../disputes.ts";
 import { agreementsToReview, reviewAgreement, undoableDecisions, undoDecision } from "../held-back.ts";
 import { parseAnswer } from "../label-input.ts";
+import { imagesForReview, ReviewError, reviewLabels } from "../label-review.ts";
 import { WordImage } from "../models/crops.ts";
 import { Dispute, DISPUTE_OUTCOMES, type DisputeOutcome } from "../models/disputes.ts";
 import { Page } from "../models/sources.ts";
@@ -175,6 +176,35 @@ reviewRouter.post("/held-back/:id/undo", async (request, response) => {
     await undoDecision(new Types.ObjectId(request.params.id), currentUser(response)._id);
   } catch (error) {
     response.status(409).json({ error: (error as Error).message });
+    return;
+  }
+  response.status(204).end();
+});
+
+/** Images whose labels did not settle them, with the readings given, for a reviewer to decide. */
+reviewRouter.get("/labels", async (_request, response) => {
+  const images = await imagesForReview(currentUser(response)._id);
+  const contexts = await imageContexts(images.map(({ wordImage }) => wordImage));
+  response.json({
+    items: images.map(({ wordImage, readings }) => ({
+      id: String(wordImage),
+      ...contexts.get(String(wordImage)),
+      readings,
+    })),
+  });
+});
+
+reviewRouter.post("/labels/:id", async (request, response) => {
+  const answer = parseAnswer(request.body);
+  if (!Types.ObjectId.isValid(request.params.id) || !answer) {
+    response.status(400).json({ error: "This answer is not valid" });
+    return;
+  }
+  try {
+    await reviewLabels(new Types.ObjectId(request.params.id), currentUser(response)._id, answer);
+  } catch (error) {
+    if (!(error instanceof ReviewError)) throw error;
+    response.status(409).json({ error: error.message });
     return;
   }
   response.status(204).end();
