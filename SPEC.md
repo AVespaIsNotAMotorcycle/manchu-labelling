@@ -3,7 +3,7 @@
 A web app for crowdsourcing labels on word images from historical Manchu sources, and the design of
 the open dataset it produces.
 
-**Status:** draft, last updated 2026-11-12. Items marked **[Proposed]** are suggested defaults the
+**Status:** draft, last updated 2026-11-16. Items marked **[Proposed]** are suggested defaults the
 owner has not yet approved. Everything else is agreed. Unresolved questions are in
 [section 12](#12-open-questions).
 
@@ -151,13 +151,25 @@ Manjurists.
 - Each image is labeled independently, and labelers cannot see other people's answers.
 - Common words are limited, so that they do not dominate the data.
 
-### Reaching a final label **[Proposed]**
+### Reaching a final label
 
-With few labelers expected, redundancy starts low:
+Decided by the owner on 2026-11-16. With few labelers expected, redundancy starts low:
 
 1. An image needs **two matching labels** from trusted users.
 2. A disagreement, or a label marked `unconfident`, sends the image to one more labeler.
 3. If that does not settle it, the image goes to a reviewer.
+
+- Each user's latest label on an image counts, so a correction replaces what it corrects.
+- Labels **match** on exact category and, for Manchu, exact letters. The intended word is ignored.
+- Only labels from users who were trusted when they made them count, as in the export (section 7).
+- A label marked unsure about its category or transcription, or with a `?` in it, cannot settle an
+  image. It still counts as a label for deciding when to ask a third labeler or a reviewer.
+- Production and script come from a majority of the labels that count, falling back to the volume's
+  values.
+- Held-back images still need 3 labels before they leave the queue.
+- **The reviewer screen** shows the image, its page, and the readings given, without names and with a
+  count for each. The reviewer picks one or types their own, and the result has the status
+  `reviewed`. Reviewers do not need to pass the quiz to review.
 
 Images that have only one label can still be exported, marked with their status (section 9).
 
@@ -266,8 +278,12 @@ with the quality control milestone, so the text must be true before non-test use
   is deleted, and thresholds can change later.
 - A label counts if its author was above the threshold **at the time it was made**. If a user improves,
   their later labels count, and their earlier ones do not.
-- **[Proposed]** Trust uses the user's last 30 check images, with a threshold of 95% character
-  accuracy.
+- Trust uses the user's last 30 graded check images in the class, made before the label, with a
+  threshold of 95% mean character accuracy. Character accuracy is 1 − edit distance ÷ answer length,
+  at least 0, and a wrong category scores 0.
+- The minimum sample is **10 graded checks**. Until then a user counts as trusted.
+- A label is only graded against a check if the user first labelled the image after it became a check,
+  so the labels that agreed on a held-back answer are not graded against it.
 
 ### Losing qualification
 
@@ -289,15 +305,20 @@ qualification for that script class and must pass the quiz again before labellin
 
 - Users can see their overall accuracy, with a delay.
 - A user's profile lists their past test images, each with a **dispute/correct button**.
-- **[Proposed]** An image only appears in this list after the user has done at least 25 more labels,
-  so that the list cannot identify checks during a session.
-- Reviewers resolve disputes. If a known label turns out to be wrong, it is corrected and the affected
-  trust scores are recalculated.
+- An image only appears in this list, and only counts towards the accuracy the user sees, after the
+  user has done at least 25 more labels, so that neither can identify checks during a session.
+- A dispute gives the reading the user thinks is right and an optional note.
+- Reviewers and admins resolve disputes, with one of three outcomes. **Upheld** changes nothing.
+  **Corrected** replaces the known answer, keeping the old one in its history. **Withdrawn** stops the
+  image being a check, and grades on it stop counting. Grades are worked out from history, so trust
+  and qualification follow automatically.
+- Users can also dispute a quiz answer from the feedback after answering. A reviewer can uphold it, or
+  withdraw the quiz image so that it is not shown again. Quiz images are not corrected in place.
 
 ### Check images and public releases
 
-A release would otherwise expose the answers to active check images. **[Proposed]** Active checks are
-left out of releases and included once retired.
+A release would otherwise expose the answers to active check images. Active checks are left out of
+releases and included once retired.
 
 **[Proposed]** by the owner, for later: a new release is published automatically every Friday.
 
@@ -324,18 +345,22 @@ answers ever being published:
   known label whose origin names the labelers' and admin's user IDs. Turned-down and disputed images
   stay held back, and are not checks.
 - Leaving held-back words out of releases comes with the export.
-- **To decide later:** whether an admin can undo a held-back decision. Decisions are append-only, so
-  undo would be a later decision that replaces the earlier one (open question 3).
+- **Undo**, decided by the owner on 2026-11-16: admins and reviewers can undo a decision. Decisions
+  are append-only, so an undo is a later record that replaces the earlier one. Undoing a yes withdraws
+  the known label: grades against it stop counting, as passes or failures, and the crowd labels on it
+  count as ordinary labels again. Undoing a no sends the image back for review.
+- Reviewers can confirm held-back answers as well as admins.
 
 ## 8. Roles
 
 | Role | Permissions |
 | --- | --- |
 | Labeler | Trains, labels, views own history, opens disputes |
-| Reviewer | Settles disagreements and disputes, creates known labels |
+| Reviewer | Settles disagreements and disputes, confirms held-back answers, creates known labels |
 | Admin | Manages sources, volumes, users, and releases |
 
-The owner is not intended to be the reviewer. Manjurists will be approached for this role.
+The owner is not intended to be the reviewer. Manjurists will be approached for this role. Ideally every
+reviewer and admin other than the owner is a trained Manjurist.
 
 ### Accounts and security
 
@@ -348,7 +373,13 @@ a password apply the same check. The server always checks. The login form does n
 set a password.
 
 **Accounts are for testing only.** There is no registration route, and accounts are created from the
-command line. The following must be done before anyone other than test users gets an account:
+command line. The following must be done before anyone other than test users gets an account. Decided
+by the owner on 2026-11-16: registration is by **invite links** from admins, with email
+verification; email goes through a generic SMTP sender; two-factor uses authenticator-app codes
+(TOTP) with recovery codes, with passkeys later; new passwords are checked against Have I Been Pwned's
+range API, which only receives the first 5 characters of the password's SHA-1 hash and is skipped if it
+cannot be reached; deleting an account removes the email, password, and credit name, and keeps the
+labels under the pseudonymous ID, since they are already licensed CC BY 4.0.
 
 - Open registration through a verified process, with email verification
 - Password reset
@@ -381,8 +412,18 @@ font must have permission from its rights holder or be removed.**
 - **Contents:** crops, page references and coordinates, reading order, every raw label, the final label
   with its status (for example `single`, `agreed`, `reviewed`), and attribution and rights.
 - **Annotator IDs are pseudonymous in the data.** Contributors can opt in to being credited by name.
-  **[Proposed]** Names are listed separately and not linked to annotator IDs, so that crediting someone
-  does not publish their accuracy.
+  Names are listed separately and not linked to annotator IDs, so that crediting someone does not
+  publish their accuracy. Users set the name they want credited in their account settings.
+- Annotator IDs are a keyed hash of the user ID with a secret kept on the server, so the same annotator
+  has the same ID in every release.
+- Splits are assigned to each volume by an admin (train, validation, or test). A volume's split cannot
+  change after a release has used it.
+- Volumes under a different license, such as NC-SA, go in a separate package.
+- **Format:** a release is a folder made by `export-release`, holding `images/` with the canonical
+  crops, `words.jsonl` (one line per word), `labels.jsonl` (every raw label, with a pseudonymous
+  annotator ID and whether it counted), `volumes.jsonl`, a data card as `README.md` in Hugging Face's
+  format, `CONTRIBUTORS.md`, and license files. The owner uploads it to Zenodo or Hugging Face and
+  records the DOI with a command.
 - Past releases cannot be changed, so a name that was published stays in that version.
 
 ## 10. Architecture
@@ -460,10 +501,12 @@ Each milestone ends with a check-in.
 
 ## 12. Open questions
 
-1. **Manuscript known labels:** print is covered by Sun et al. (2026). Existing transcriptions can be
-   aligned to scans and confirmed by eye (section 3), starting with *Justan i bithe*. Who confirms them
-   once there are more?
-2. **Hosting:** where do the app and database run in production?
-3. **Undoing a held-back decision:** a mistaken yes makes a wrong check, and a mistaken no loses a
-   check. Should admins be able to undo, and what happens to check results already graded against a
-   yes?
+Answered on 2026-11-16:
+
+1. **Manuscript known labels** are confirmed by reviewers or admins, ideally trained Manjurists. Moving
+   candidate review from `review_candidates.py` into the app is left until after the first release.
+2. **Hosting:** one VPS running Docker Compose, with the API, MongoDB on a private Docker network,
+   and Caddy for HTTPS. Images are on R2, and a nightly `mongodump` goes to R2.
+3. **Undoing a held-back decision:** allowed, as described in section 7.
+
+None are open now.
