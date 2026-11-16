@@ -189,3 +189,17 @@ export const resolveDispute = (
   id: string,
   body: { outcome: "upheld" | "corrected" | "withdrawn"; category?: string; transcription?: string; note?: string },
 ) => request<void>(`/api/review/disputes/${id}`, { method: "POST", body });
+
+export interface HeldBackDecision {
+  id: string;
+  imageUrl: string;
+  decision: "yes" | "no";
+  category: string;
+  manchu?: string;
+  abkai?: string;
+  decidedAt: string;
+}
+
+export const getHeldBackDecisions = () =>
+  request<{ items: HeldBackDecision[] }>("/api/review/held-back-decisions");
+export const undoHeldBack = (id: string) => request<void>(`/api/review/held-back/${id}/undo`, { method: "POST" });

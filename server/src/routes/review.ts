@@ -5,7 +5,7 @@ import { Types } from "mongoose";
 import { checkResults } from "../checks.ts";
 import { currentUser, requireReviewer, requireUser } from "../auth.ts";
 import { DisputeError, resolveDispute } from "../disputes.ts";
-import { agreementsToReview, reviewAgreement } from "../held-back.ts";
+import { agreementsToReview, reviewAgreement, undoableDecisions, undoDecision } from "../held-back.ts";
 import { parseAnswer } from "../label-input.ts";
 import { WordImage } from "../models/crops.ts";
 import { Dispute, DISPUTE_OUTCOMES, type DisputeOutcome } from "../models/disputes.ts";
@@ -142,6 +142,37 @@ reviewRouter.post("/held-back/:id", async (request, response) => {
       category,
       manchu,
     });
+  } catch (error) {
+    response.status(409).json({ error: (error as Error).message });
+    return;
+  }
+  response.status(204).end();
+});
+
+/** Recent decisions on held-back answers, newest first, so that a mistake can be undone. */
+reviewRouter.get("/held-back-decisions", async (_request, response) => {
+  const decisions = await undoableDecisions();
+  const contexts = await imageContexts(decisions.map(({ wordImage }) => wordImage));
+  response.json({
+    items: decisions.map(({ wordImage, decision, category, manchu, createdAt }) => ({
+      id: String(wordImage),
+      imageUrl: contexts.get(String(wordImage))?.imageUrl,
+      decision,
+      category,
+      manchu,
+      abkai: manchu ? manchuToAbkai(manchu).text : undefined,
+      decidedAt: createdAt,
+    })),
+  });
+});
+
+reviewRouter.post("/held-back/:id/undo", async (request, response) => {
+  if (!Types.ObjectId.isValid(request.params.id)) {
+    response.status(400).json({ error: "This image is not valid" });
+    return;
+  }
+  try {
+    await undoDecision(new Types.ObjectId(request.params.id), currentUser(response)._id);
   } catch (error) {
     response.status(409).json({ error: (error as Error).message });
     return;

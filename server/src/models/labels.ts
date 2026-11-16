@@ -103,19 +103,23 @@ const knownLabelSchema = new Schema({
 });
 
 /**
- * An admin's decision on a held-back image whose labelers all agreed. A yes also creates its known label.
- * Decisions are final, so an image is only reviewed once.
+ * A reviewer's decision on a held-back image whose labelers all agreed. A yes also creates its known
+ * label. Decisions are never changed: an `undo` is a later record that replaces the one it names. Undoing
+ * a yes withdraws the known label, and undoing a no sends the image back for review.
  */
 const heldBackReviewSchema = new Schema({
-  wordImage: { type: Schema.Types.ObjectId, ref: "WordImage", required: true, unique: true },
+  wordImage: { type: Schema.Types.ObjectId, ref: "WordImage", required: true },
   reviewer: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  decision: { type: String, enum: ["yes", "no"], required: true },
+  decision: { type: String, enum: ["yes", "no", "undo"], required: true },
+  /** The decision that an undo replaces. */
+  undoes: { type: Schema.Types.ObjectId, ref: "HeldBackReview" },
   /** The answer the labelers agreed on, as the reviewer saw it. */
   category: { type: String, enum: CATEGORIES, required: true },
   manchu: { type: String, match: STORED_MANCHU },
   labelers: [{ type: Schema.Types.ObjectId, ref: "User", required: true }],
   createdAt: { type: Date, default: Date.now, immutable: true },
 });
+heldBackReviewSchema.index({ wordImage: 1, createdAt: 1 });
 heldBackReviewSchema.plugin(appendOnly);
 
 /** Records that a user was given an image. This must never say whether the image is a check. */

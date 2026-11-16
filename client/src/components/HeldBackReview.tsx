@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { decideHeldBack, getHeldBack, type HeldBackItem } from "../api.ts";
+import {
+  decideHeldBack,
+  getHeldBack,
+  getHeldBackDecisions,
+  undoHeldBack,
+  type HeldBackDecision,
+  type HeldBackItem,
+} from "../api.ts";
+import { AnswerText } from "./AnswerText.tsx";
 import { categoryName } from "./CategoryField.tsx";
 import { CropImage } from "./CropImage.tsx";
 import { ManchuText } from "./ManchuText.tsx";
@@ -98,6 +106,63 @@ export function HeldBackReview() {
           <PageImage context={item.context} />
         </div>
       )}
+      <RecentDecisions key={items?.length} onUndone={load} />
     </section>
+  );
+}
+
+/**
+ * The latest decisions, so that a mistake can be undone. Undoing a yes stops the image being a check,
+ * and undoing a no puts it back in the list above.
+ */
+function RecentDecisions({ onUndone }: { onUndone: () => void }) {
+  const [decisions, setDecisions] = useState<HeldBackDecision[]>([]);
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = useCallback(() => {
+    getHeldBackDecisions()
+      .then(({ items }) => setDecisions(items))
+      .catch((failure: Error) => setError(failure.message));
+  }, []);
+  useEffect(() => {
+    if (open) load();
+  }, [open, load]);
+
+  async function undo(decision: HeldBackDecision) {
+    const warning =
+      decision.decision === "yes"
+        ? "Undo this yes? The image will stop being a hidden check, and grades on it will no longer count."
+        : "Undo this no? The image will go back on the list for review.";
+    if (!window.confirm(warning)) return;
+    try {
+      await undoHeldBack(decision.id);
+      load();
+      onUndone();
+    } catch (failure) {
+      setError((failure as Error).message);
+    }
+  }
+
+  return (
+    <details className="recent-decisions" onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary>Recent decisions</summary>
+      {error && <p role="alert">{error}</p>}
+      {open && decisions.length === 0 && <p className="hint">No decisions yet.</p>}
+      <ul className="past-checks">
+        {decisions.map((decision) => (
+          <li key={decision.id} className="past-check">
+            <img className="thumbnail" src={decision.imageUrl} alt="A held-back image" />
+            <AnswerText answer={decision} />
+            <div className="past-check-result">
+              <p>{decision.decision === "yes" ? "Yes, a hidden check" : "No"}</p>
+              <button type="button" className="secondary" onClick={() => undo(decision)}>
+                Undo
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }

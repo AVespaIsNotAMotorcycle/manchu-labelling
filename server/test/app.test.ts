@@ -975,3 +975,32 @@ test("a disputed quiz image can be withdrawn but not corrected", async () => {
   assert.equal((await resolve("withdrawn")).status, 204);
   assert.equal((await TrainingItem.findById(item.id).orFail()).active, false);
 });
+
+test("a reviewer can undo a held-back yes, which withdraws the check, or a no, which reopens it", async () => {
+  const image = await WordImage.findById(imageId).orFail();
+  await WordInstance.updateOne({ _id: image.instance }, { heldBack: true });
+  const reviewer = await loggedIn("reviewer@example.com", { role: "reviewer" });
+  await labelBy(imageId, 3, manju);
+  const decide = (body: object) => reviewer.request(`/api/review/held-back/${imageId}`, { method: "POST", body });
+  const undo = () => reviewer.request(`/api/review/held-back/${imageId}/undo`, { method: "POST" });
+  const waiting = async () => (await (await reviewer.request("/api/review/held-back")).json()).items.length;
+  const { manchu } = manju.transcription;
+
+  assert.equal((await undo()).status, 409);
+  assert.equal((await decide({ decision: "no", category: "manchu", manchu })).status, 204);
+  assert.equal(await waiting(), 0);
+  const [decision] = (await (await reviewer.request("/api/review/held-back-decisions")).json()).items;
+  assert.equal(decision.decision, "no");
+
+  assert.equal((await undo()).status, 204);
+  assert.equal(await waiting(), 1);
+  assert.equal((await undo()).status, 409);
+
+  assert.equal((await decide({ decision: "yes", category: "manchu", manchu })).status, 204);
+  assert.equal((await KnownLabel.findOne({ wordImage: imageId }).orFail()).state, "active");
+  assert.equal((await undo()).status, 204);
+  assert.equal((await KnownLabel.findOne({ wordImage: imageId }).orFail()).state, "withdrawn");
+  // A withdrawn answer is not offered for review again.
+  assert.equal(await waiting(), 0);
+  assert.deepEqual((await (await reviewer.request("/api/review/held-back-decisions")).json()).items, []);
+});

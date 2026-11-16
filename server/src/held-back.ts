@@ -52,17 +52,26 @@ export function agreedAnswer(labels: readonly LatestLabel[]): Omit<Agreement, "w
   return { category: first.category, manchu, labelers: labels.map(({ user }) => user) };
 }
 
-/** Held-back images whose labelers agree, and which no admin has reviewed yet, oldest word first. */
+/** The latest decision on each image, keyed by image ID. */
+async function latestDecisions(images?: readonly Types.ObjectId[]) {
+  const decisions = await HeldBackReview.find(images ? { wordImage: { $in: images } } : {})
+    .sort({ createdAt: 1, _id: 1 })
+    .lean();
+  return new Map(decisions.map((decision) => [String(decision.wordImage), decision]));
+}
+
+/** Held-back images whose labelers agree, and which no reviewer has decided on, oldest word first. */
 export async function agreementsToReview(limit = 50): Promise<Agreement[]> {
   const crops = (await WordInstance.distinct("canonicalCrop", {
     heldBack: true,
     retired: { $ne: true },
   })) as Types.ObjectId[];
-  const [known, reviewed] = await Promise.all([
+  const [known, decided] = await Promise.all([
     KnownLabel.distinct("wordImage", { wordImage: { $in: crops } }),
-    HeldBackReview.distinct("wordImage", { wordImage: { $in: crops } }),
+    latestDecisions(crops),
   ]);
-  const done = new Set([...known, ...reviewed].map(String));
+  const reviewed = [...decided.values()].filter(({ decision }) => decision !== "undo");
+  const done = new Set([...known.map(String), ...reviewed.map(({ wordImage }) => String(wordImage))]);
   const open = crops.filter((crop) => !done.has(String(crop)));
   const labels = await Annotation.find(
     { wordImage: { $in: open } },
@@ -88,7 +97,7 @@ export async function agreementsToReview(limit = 50): Promise<Agreement[]> {
 }
 
 /**
- * Records an admin's decision. The answer must still be the one the admin saw, since a labeler may have
+ * Records a reviewer's decision. The answer must still be the one the admin saw, since a labeler may have
  * corrected their label in the meantime. A yes makes the image an active hidden check.
  */
 export async function reviewAgreement(
@@ -114,4 +123,31 @@ export async function reviewAgreement(
     });
   }
   await HeldBackReview.create({ wordImage, reviewer, decision, category, manchu, labelers });
+}
+
+/** The latest yes or no decisions that can still be undone, newest first. */
+export async function undoableDecisions(limit = 50) {
+  const latest = [...(await latestDecisions()).values()].filter(({ decision }) => decision !== "undo");
+  return latest.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limit);
+}
+
+/**
+ * Undoes the latest decision on an image with a later record. Undoing a yes withdraws the known label,
+ * so grades against it stop counting. Undoing a no sends the image back for review.
+ */
+export async function undoDecision(wordImage: Types.ObjectId, reviewer: Types.ObjectId): Promise<void> {
+  const latest = (await latestDecisions([wordImage])).get(String(wordImage));
+  if (!latest || latest.decision === "undo") throw new Error("There is no decision to undo on this image");
+  if (latest.decision === "yes") {
+    await KnownLabel.updateOne({ wordImage }, { state: "withdrawn" });
+  }
+  await HeldBackReview.create({
+    wordImage,
+    reviewer,
+    decision: "undo",
+    undoes: latest._id,
+    category: latest.category,
+    manchu: latest.manchu,
+    labelers: latest.labelers,
+  });
 }
