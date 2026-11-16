@@ -16,7 +16,12 @@ import { connectDatabase } from "../src/db.ts";
 import { CropReview, WordImage, WordInstance } from "../src/models/crops.ts";
 import { Annotation, Assignment, HeldBackReview, KnownLabel } from "../src/models/labels.ts";
 import { Page, Volume } from "../src/models/sources.ts";
-import { Qualification, TrainingAttempt, TrainingItem } from "../src/models/training.ts";
+import {
+  Qualification,
+  QuizReset as QuizResetModel,
+  TrainingAttempt,
+  TrainingItem,
+} from "../src/models/training.ts";
 import { User } from "../src/models/users.ts";
 import { hashPassword } from "../src/passwords.ts";
 import { checkRate, pickNextImage } from "../src/queue.ts";
@@ -1161,4 +1166,27 @@ test("a rate limit window starts again once it ends", async () => {
   assert.equal((await store.increment("key")).totalHits, 1);
   await store.resetKey("key");
   assert.equal(await store.get("key"), undefined);
+});
+
+test("an open image from a class the user can no longer label waits until they requalify", async () => {
+  const client = await loggedIn("person@example.com");
+  const user = await userId("person@example.com");
+  const first = (await (await client.request("/api/labelling/next")).json()).image.id;
+  const page = (await WordImage.findById(imageId).orFail()).page;
+  const running = await Volume.create({
+    sourceId: "running",
+    title: "Running",
+    manifestUrl: "https://example.com/r",
+    production: "manuscript",
+    script: "running",
+    rights: { statement: "s", attribution: "a", permanentLink: "https://example.com/r" },
+  });
+  const runningPage = await Page.create({ ...(await Page.findById(page).orFail()).toObject(), _id: undefined, volume: running._id, imageKey: "55555555-5555-4555-8555-555555555555.jpg" });
+  const other = await makeWord("66666666-6666-4666-8666-666666666666.jpg", runningPage._id);
+  await Qualification.create({ user, scriptClass: "running" });
+  // The user loses the regular class but keeps running.
+  await QuizResetModel.create({ user, scriptClass: "regular" });
+  const next = await (await client.request("/api/labelling/next")).json();
+  assert.equal(next.image.id, String(other._id));
+  assert.notEqual(next.image.id, first);
 });

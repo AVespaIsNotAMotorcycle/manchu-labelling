@@ -7,6 +7,7 @@ import { parseText } from "../label-input.ts";
 import { WordImage } from "../models/crops.ts";
 import { Annotation, Assignment, CATEGORIES } from "../models/labels.ts";
 import { Page, Volume, PRODUCTION_TYPES, SCRIPT_TYPES } from "../models/sources.ts";
+import { scriptClassOfImages } from "../checks.ts";
 import { pickNextImage } from "../queue.ts";
 import { qualifiedClasses } from "../training.ts";
 
@@ -47,7 +48,12 @@ labellingRouter.get("/next", async (_request, response) => {
     response.status(403).json({ error: "Please complete training first" });
     return;
   }
-  const open = await Assignment.findOne({ user, submittedAt: null });
+  // An image waiting from a class the user can no longer label stays assigned for when they requalify.
+  const waiting = await Assignment.find({ user, submittedAt: null }).sort({ assignedAt: 1 });
+  const classOf = await scriptClassOfImages(waiting.map(({ wordImage }) => wordImage));
+  const open = waiting.find(({ wordImage }) =>
+    (scriptClasses as readonly string[]).includes(classOf.get(String(wordImage)) ?? ""),
+  );
   const wordImage = open?.wordImage ?? (await pickNextImage(user, scriptClasses));
   if (!wordImage) {
     response.json({ image: null });

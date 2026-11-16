@@ -174,6 +174,10 @@ Decided by the owner on 2026-11-16. With few labelers expected, redundancy start
   `agreed`, `needs_review`, and `reviewed`. Two answers tied on the most labels do not agree.
   Reviewers never see an image they labelled, hidden checks, or words awaiting a crop ruling. Each
   reviewer answer is a new record in `labelReviews`, and the latest one counts.
+- **Scaling limit:** the queue settles every labelled image on each request. With 40,000 labels it
+  takes about 0.4 seconds, and it grows with the number of labels. Before the dataset is much larger,
+  keep each image's status in a collection updated when a label is saved, which can always be rebuilt
+  from history.
 - **[Proposed]** An image is given to at most 6 labelers, so that labels from users who are not trusted
   cannot keep it in the queue forever.
 - As built, held-back agreements also only count labelers who were trusted when they labelled.
@@ -250,8 +254,9 @@ Requiring 8 in a row means persistence can eventually beat skill, and the image 
 
 **[Proposed]** Each script class needs at least 300 real images at launch.
 
-The introduction tells users about the hidden checks, their accuracy, and disputes. Those features arrive
-with the quality control milestone, so the text must be true before non-test users see it.
+The introduction tells users about the hidden checks, their accuracy, and disputes. As of 2026-11-16 all
+three exist: accuracy and past checks are on the Progress page, and disputes can be opened there or from
+quiz feedback.
 
 ## 7. Quality control
 
