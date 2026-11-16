@@ -8,6 +8,8 @@ import { labellingRouter } from "./routes/labelling.ts";
 import { profileRouter } from "./routes/profile.ts";
 import { reviewRouter } from "./routes/review.ts";
 import { trainingRouter } from "./routes/training.ts";
+import { HashingBusyError } from "./passwords.ts";
+import { requireSameOrigin, securityHeaders } from "./security.ts";
 
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const DEFAULT_LOGIN_ATTEMPTS = 10;
@@ -21,13 +23,17 @@ export interface AppOptions {
   storageDirectory: string;
   /** Login attempts allowed per address in 15 minutes. */
   loginAttempts?: number;
+  /** The address users reach the app at, such as https://labels.example.org. Derived from the request if unset. */
+  origin?: string;
 }
 
 export function createApp(options: AppOptions): express.Express {
   const app = express();
   app.disable("x-powered-by");
   if (options.secureCookies) app.set("trust proxy", 1);
-  app.use(express.json());
+  app.use(securityHeaders({ https: options.secureCookies }));
+  app.use(requireSameOrigin({ origin: options.origin }));
+  app.use(express.json({ limit: "100kb" }));
   app.use(
     session({
       secret: options.sessionSecret,
@@ -66,6 +72,14 @@ export function createApp(options: AppOptions): express.Express {
   });
 
   app.use((error: Error, _request: Request, response: Response, _next: NextFunction) => {
+    if (error instanceof HashingBusyError) {
+      response.status(503).set("Retry-After", "5").json({ error: error.message });
+      return;
+    }
+    if ((error as { type?: string }).type === "entity.too.large") {
+      response.status(413).json({ error: "This request is too large" });
+      return;
+    }
     console.error(error);
     response.status(500).json({ error: "Something went wrong" });
   });

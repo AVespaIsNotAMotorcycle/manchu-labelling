@@ -1087,3 +1087,25 @@ test("users opt in to being credited by name, and can opt out", async () => {
   assert.deepEqual(await (await put(null)).json(), { creditName: null });
   assert.equal((await User.findOne({ email: "person@example.com" }).lean())?.creditName, undefined);
 });
+
+test("refuses changes from other sites and bodies that are not JSON, and sets security headers", async () => {
+  const client = await loggedIn("person@example.com");
+  const post = (headers: Record<string, string>, body = "{}") =>
+    fetch(`${base}/api/auth/accept-license`, { method: "POST", headers: { cookie: client.cookie, ...headers }, body });
+  assert.equal((await post({ "Content-Type": "application/json", Origin: "https://evil.example" })).status, 403);
+  assert.equal((await post({ "Content-Type": "application/json", "Sec-Fetch-Site": "cross-site" })).status, 403);
+  assert.equal((await post({ "Content-Type": "text/plain" })).status, 415);
+  assert.equal((await post({ "Content-Type": "application/json", Origin: base, "Sec-Fetch-Site": "same-origin" })).status, 200);
+
+  const response = await client.request("/api/health");
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+  assert.match(response.headers.get("content-security-policy") ?? "", /frame-ancestors 'none'/);
+});
+
+test("turns away logins when too many passwords are being checked at once", async () => {
+  const { verifyPassword, HashingBusyError } = await import("../src/passwords.ts");
+  const results = await Promise.allSettled(Array.from({ length: 25 }, () => verifyPassword("x", passwordHash)));
+  const busy = results.filter((result) => result.status === "rejected");
+  assert.equal(busy.length, 3);
+  assert.ok(busy.every((result) => (result as PromiseRejectedResult).reason instanceof HashingBusyError));
+});

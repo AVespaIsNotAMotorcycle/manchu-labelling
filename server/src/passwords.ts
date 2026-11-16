@@ -9,12 +9,46 @@ const PARALLELIZATION = 1;
 const KEY_LENGTH = 32;
 const MAX_MEMORY = 256 * 1024 * 1024;
 
+/**
+ * Each hash takes about 128 MB and a worker thread, so only a few run at once and a short queue waits.
+ * Beyond that, requests are turned away rather than delaying everything else on the server.
+ */
+const MAX_CONCURRENT_HASHES = 2;
+const MAX_WAITING_HASHES = 20;
+
+export class HashingBusyError extends Error {
+  constructor() {
+    super("Too many people are signing in. Please try again in a moment.");
+  }
+}
+
+let running = 0;
+const waiting: (() => void)[] = [];
+
+async function withHashSlot<T>(work: () => Promise<T>): Promise<T> {
+  if (running < MAX_CONCURRENT_HASHES) {
+    running += 1;
+  } else {
+    if (waiting.length >= MAX_WAITING_HASHES) throw new HashingBusyError();
+    // A finishing hash hands its slot straight to the next in line, so the count never goes over.
+    await new Promise<void>((resolve) => waiting.push(resolve));
+  }
+  try {
+    return await work();
+  } finally {
+    const next = waiting.shift();
+    if (next) next();
+    else running -= 1;
+  }
+}
+
 function derive(password: string, salt: Buffer, options: ScryptOptions): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    scrypt(password, salt, KEY_LENGTH, options, (error, key) =>
-      error ? reject(error) : resolve(key),
-    );
-  });
+  return withHashSlot(
+    () =>
+      new Promise((resolve, reject) => {
+        scrypt(password, salt, KEY_LENGTH, options, (error, key) => (error ? reject(error) : resolve(key)));
+      }),
+  );
 }
 
 /** Keeps the settings in the result so that they can be raised later. */

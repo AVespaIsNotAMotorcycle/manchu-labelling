@@ -4,6 +4,7 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [react()],
   server: {
-    proxy: { "/api": process.env.API_TARGET ?? "http://localhost:3001" },
+    // The Host header is kept so that the API's same-origin check sees the address the browser used.
+    proxy: { "/api": { target: process.env.API_TARGET ?? "http://localhost:3001", changeOrigin: false } },
   },
 });

@@ -397,10 +397,14 @@ labels under the pseudonymous ID, since they are already licensed CC BY 4.0.
 - Two-factor authentication or passkeys, required for reviewers and admins
 - A rate limit that also tracks each account, and alerts on repeated failures
 - Rate limit counts that survive a server restart, kept in MongoDB rather than in memory
-- A limit on concurrent password hashing, so that a burst of logins cannot delay other requests
+- ~~A limit on concurrent password hashing, so that a burst of logins cannot delay other requests~~
+  Done: two hashes run at once, 20 more wait, and the rest get a 503.
 - MongoDB authentication and a private network in production
 - A check of new passwords against known breaches
-- CSRF review, security headers, and HTTPS everywhere in production
+- CSRF review, security headers, and HTTPS everywhere in production. Done in the API: changes need
+  JSON bodies and are refused when `Origin` or `Sec-Fetch-Site` shows another site, on top of
+  `SameSite=Lax` cookies, and responses carry a strict policy. HTTPS and the client's headers come
+  with the deployment files.
 - A review of how account and contribution data can be deleted
 - A security review of the whole authentication flow
 - Permission for any font served to users (see below)
