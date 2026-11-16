@@ -178,8 +178,8 @@ Decided by the owner on 2026-11-16. With few labelers expected, redundancy start
   takes about 0.4 seconds, and it grows with the number of labels. Before the dataset is much larger,
   keep each image's status in a collection updated when a label is saved, which can always be rebuilt
   from history.
-- **[Proposed]** An image is given to at most 6 labelers, so that labels from users who are not trusted
-  cannot keep it in the queue forever.
+- An image is given to at most 6 labelers, so that labels from users who are not trusted cannot keep it
+  in the queue forever. Approved by the owner on 2026-11-16.
 - As built, held-back agreements also only count labelers who were trusted when they labelled.
 
 Images that have only one label can still be exported, marked with their status (section 9).
@@ -334,7 +334,8 @@ qualification for that script class and must pass the quiz again before labellin
   image being a check, and grades on it stop counting. Grades are worked out from history, so trust
   and qualification follow automatically.
 - Users can also dispute a quiz answer from the feedback after answering. A reviewer can uphold it, or
-  withdraw the quiz image so that it is not shown again. Quiz images are not corrected in place.
+  withdraw the quiz image so that it is not shown again. Quiz images are not corrected in place. Approved
+  by the owner on 2026-11-16.
 
 ### Check images and public releases
 
