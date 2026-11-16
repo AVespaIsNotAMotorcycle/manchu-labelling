@@ -21,6 +21,14 @@ export const normalizeEmail = (email: unknown) => (typeof email === "string" ? e
 
 const later = (milliseconds: number) => new Date(Date.now() + milliseconds);
 
+/**
+ * Sends an email without waiting for it, so that a response takes the same time whether or not an
+ * email went out. Otherwise the timing would show whether an account exists.
+ */
+function sendInBackground(mailer: Mailer, message: Parameters<Mailer>[0]): void {
+  mailer(message).catch((error: unknown) => console.error("Could not send an email", error));
+}
+
 export async function createInvite(options: {
   createdBy?: Id;
   email?: string;
@@ -54,13 +62,13 @@ async function sendLink(
   const lifetime = purpose === "verify" ? VERIFY_HOURS * 60 * 60 * 1000 : RESET_MINUTES * 60 * 1000;
   await EmailToken.create({ user: user._id, purpose, tokenHash: hash, expiresAt: later(lifetime) });
   if (purpose === "verify") {
-    await mailer({
+    sendInBackground(mailer, {
       to: user.email,
       subject: "Confirm your email for Manchu Labelling",
       text: `Please confirm your email address by opening this link within ${VERIFY_HOURS} hours:\n\n${appUrl}/verify-email?token=${token}\n\nIf you did not register, you can ignore this email.`,
     });
   } else {
-    await mailer({
+    sendInBackground(mailer, {
       to: user.email,
       subject: "Reset your Manchu Labelling password",
       text: `Someone asked to reset the password for this account. To choose a new password, open this link within ${RESET_MINUTES} minutes:\n\n${appUrl}/reset-password?token=${token}\n\nIf it was not you, you can ignore this email, and your password will not change.`,
@@ -98,7 +106,7 @@ export async function register(options: {
 
   const existing = await User.findOne({ email });
   if (existing) {
-    await options.mailer({
+    sendInBackground(options.mailer, {
       to: email,
       subject: "Someone tried to register with your email",
       text: `Someone tried to register for Manchu Labelling with this email address, which already has an account. If it was you, log in instead, or reset your password at ${options.appUrl}/forgot-password.`,

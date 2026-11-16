@@ -418,7 +418,9 @@ labels under the pseudonymous ID, since they are already licensed CC BY 4.0.
 - ~~A review of how account and contribution data can be deleted~~ Done: users can delete their
   account from the Account page, which removes the email, password, credit name, and two-factor
   secrets and keeps labels, disputes, and reviews under the account's ID.
-- A security review of the whole authentication flow
+- A security review of the whole authentication flow. A first review is recorded in `SECURITY.md`,
+  with the risks that remain. It was done by the AI assistant that wrote the code, so an independent
+  review is still needed.
 - Permission for any font served to users (see below)
 
 ### Fonts
