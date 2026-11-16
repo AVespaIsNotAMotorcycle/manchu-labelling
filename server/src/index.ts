@@ -27,7 +27,7 @@ createApp({
     client: mongoose.connection.getClient() as never,
     collectionName: "sessions",
   }),
-  storageDirectory: resolve(import.meta.dirname, "../../data/storage"),
+  storageDirectory: process.env.STORAGE_DIRECTORY ?? resolve(import.meta.dirname, "../../data/storage"),
 }).listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });

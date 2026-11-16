@@ -13,6 +13,7 @@ import {
 import { AbkaiField } from "./AbkaiField.tsx";
 import { categoryName, CategoryField } from "./CategoryField.tsx";
 import { CropImage } from "./CropImage.tsx";
+import { DisputeForm } from "./DisputeForm.tsx";
 import { ManchuText } from "./ManchuText.tsx";
 
 function Introduction({ onStart, lostToChecks }: { onStart: () => void; lostToChecks: boolean }) {
@@ -58,8 +59,8 @@ function Introduction({ onStart, lostToChecks }: { onStart: () => void; lostToCh
         it improves. Later labels can still count, so a bad patch is not permanent.
       </p>
       <p>
-        You can see your overall accuracy. Past test images appear on your profile after a delay, and
-        you can dispute any answer that you think is wrong.
+        You can see your overall accuracy on the Progress page. Past test images appear there after a
+        delay, and you can dispute any answer that you think is wrong, including answers in this quiz.
       </p>
       <button type="button" onClick={onStart} autoFocus>
         Start the quiz
@@ -183,6 +184,7 @@ function Feedback(props: {
 }) {
   const { item, given, result, practice, onNext, onFinish } = props;
   const { answer, correct, progress } = result;
+  const [dispute, setDispute] = useState<"closed" | "open" | "sent">("closed");
   const givenManchu = abkaiToManchu(given.abkai).text;
   return (
     <div className="labelling">
@@ -227,6 +229,21 @@ function Feedback(props: {
           )}
         </dl>
         <p className="hint">Source: {result.source}</p>
+        {dispute === "closed" && (
+          <button type="button" className="link" onClick={() => setDispute("open")}>
+            I think this answer is wrong
+          </button>
+        )}
+        {dispute === "open" && (
+          <DisputeForm
+            kind="quiz"
+            id={item.id}
+            initial={{ category: given.category, abkai: given.abkai }}
+            onCancel={() => setDispute("closed")}
+            onDone={() => setDispute("sent")}
+          />
+        )}
+        {dispute === "sent" && <p className="hint">Thank you. A reviewer will look at this answer.</p>}
         {progress.qualified && !practice ? (
           <>
             <p className="result right">You are ready to label.</p>

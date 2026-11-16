@@ -123,3 +123,69 @@ export const decideHeldBack = (item: HeldBackItem, decision: "yes" | "no") =>
     method: "POST",
     body: { decision, category: item.category, manchu: item.manchu },
   });
+
+export interface Answer {
+  category: string;
+  manchu?: string;
+  abkai?: string;
+}
+
+export type DisputeStatus = "open" | "upheld" | "corrected" | "withdrawn";
+
+export interface PastCheck {
+  id: string;
+  imageUrl: string;
+  scriptClass: string;
+  passed: boolean;
+  accuracy: number;
+  label: Answer;
+  answer: Answer;
+  dispute: DisputeStatus | null;
+}
+
+export interface OwnDispute {
+  id: string;
+  kind: "check" | "quiz";
+  imageUrl: string;
+  createdAt: string;
+  answer: Answer;
+  proposed: Answer;
+  note?: string;
+  outcome: DisputeStatus;
+  reviewerNote?: string;
+}
+
+export interface Profile {
+  accuracy: { scriptClass: string; answered: number; passed: number; accuracy: number }[];
+  checks: PastCheck[];
+  disputes: OwnDispute[];
+}
+
+export const getProfile = () => request<Profile>("/api/profile");
+export const openDispute = (body: {
+  kind: "check" | "quiz";
+  id: string;
+  category: string;
+  transcription?: string;
+  note?: string;
+}) => request<void>("/api/profile/disputes", { method: "POST", body });
+
+/** An open dispute, as a reviewer sees it. */
+export interface DisputeItem {
+  id: string;
+  kind: "check" | "quiz";
+  imageUrl: string;
+  context?: PageContext;
+  source?: string;
+  answer: Answer;
+  proposed: Answer;
+  note?: string;
+  createdAt: string;
+  graded?: { total: number; passed: number };
+}
+
+export const getDisputes = () => request<{ items: DisputeItem[] }>("/api/review/disputes");
+export const resolveDispute = (
+  id: string,
+  body: { outcome: "upheld" | "corrected" | "withdrawn"; category?: string; transcription?: string; note?: string },
+) => request<void>(`/api/review/disputes/${id}`, { method: "POST", body });

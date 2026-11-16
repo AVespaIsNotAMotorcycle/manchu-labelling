@@ -9,17 +9,18 @@ import {
   type TrainingStatus,
 } from "./api.ts";
 import { FontPicker } from "./components/FontPicker.tsx";
-import { HeldBackReview } from "./components/HeldBackReview.tsx";
 import { Labelling } from "./components/Labelling.tsx";
 import { LicensePrompt } from "./components/LicensePrompt.tsx";
 import { Login } from "./components/Login.tsx";
+import { Profile } from "./components/Profile.tsx";
 import { Reference } from "./components/Reference.tsx";
+import { Review } from "./components/Review.tsx";
 import { Training } from "./components/Training.tsx";
 
-type View = "label" | "train" | "admin";
+type View = "label" | "train" | "progress" | "review";
 
 function Workspace(props: {
-  isAdmin: boolean;
+  canReview: boolean;
   status: TrainingStatus;
   view: View | null;
   onViewChange: (view: View) => void;
@@ -47,9 +48,12 @@ function Workspace(props: {
           <button type="button" aria-current={view === "train"} onClick={() => onViewChange("train")}>
             Training
           </button>
-          {props.isAdmin && (
-            <button type="button" aria-current={view === "admin"} onClick={() => onViewChange("admin")}>
-              Admin
+          <button type="button" aria-current={view === "progress"} onClick={() => onViewChange("progress")}>
+            Progress
+          </button>
+          {props.canReview && (
+            <button type="button" aria-current={view === "review"} onClick={() => onViewChange("review")}>
+              Review
             </button>
           )}
         </nav>
@@ -61,7 +65,8 @@ function Workspace(props: {
             }}
           />
         )}
-        {view === "admin" && props.isAdmin && <HeldBackReview />}
+        {view === "progress" && <Profile />}
+        {view === "review" && props.canReview && <Review />}
         {view === "train" &&
           (scriptClass ? (
             <Training scriptClass={scriptClass} onQualified={onQualified} onReset={onStatusChange} />
@@ -124,7 +129,7 @@ export function App() {
       {account.licenseAccepted && !training && <p className="status">Loading…</p>}
       {account.licenseAccepted && training && (
         <Workspace
-          isAdmin={account.role === "admin"}
+          canReview={account.role === "admin" || account.role === "reviewer"}
           status={training}
           view={view}
           onViewChange={setView}

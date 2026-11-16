@@ -7,7 +7,7 @@ import { ManchuText } from "./ManchuText.tsx";
 import { PageImage } from "./PageView.tsx";
 
 /**
- * Lets an admin confirm the answers that labelers agreed on for held-back images. A yes makes the image a
+ * Lets a reviewer confirm the answers that labelers agreed on for held-back images. A yes makes the image a
  * hidden check, so it should only be given when the image shows exactly that answer.
  */
 export function HeldBackReview() {
@@ -54,7 +54,7 @@ export function HeldBackReview() {
   }, [decide]);
 
   return (
-    <main className="held-back">
+    <section className="held-back">
       <h2>Held-back answers</h2>
       <p className="hint">
         Each image was labelled the same way by {item?.labelers ?? 3} labelers. Yes makes it a hidden
@@ -98,6 +98,6 @@ export function HeldBackReview() {
           <PageImage context={item.context} />
         </div>
       )}
-    </main>
+    </section>
   );
 }
