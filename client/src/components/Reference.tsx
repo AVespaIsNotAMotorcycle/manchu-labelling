@@ -8,6 +8,8 @@ import {
   type PointerEvent,
 } from "react";
 
+import { hasActiveAbkaiField, insertAbkai, onActiveAbkaiFieldChange } from "../abkai-input.ts";
+
 const STORAGE_KEY = "reference-width";
 const TAB_STORAGE_KEY = "reference-tab";
 const KEYBOARD_STEP = 32;
@@ -86,8 +88,16 @@ function readSavedTab(): string {
   }
 }
 
+/** Whether there is an Abkai field for the reference to type into. */
+function useTyping(): boolean {
+  const [typing, setTyping] = useState(hasActiveAbkaiField);
+  useEffect(() => onActiveAbkaiFieldChange(() => setTyping(hasActiveAbkaiField())), []);
+  return typing;
+}
+
 function LetterTabs() {
   const [selected, setSelected] = useState(readSavedTab);
+  const typing = useTyping();
   const tabList = useRef<HTMLDivElement>(null);
   const tab = TABS.find(({ id }) => id === selected) ?? (TABS[0] as Tab);
 
@@ -155,7 +165,21 @@ function LetterTabs() {
           <tbody>
             {tab.letters.map(({ abkai, alone, initial, medial, final }) => (
               <tr key={abkai}>
-                <th scope="row">{abkai}</th>
+                <th scope="row">
+                  {typing ? (
+                    <button
+                      type="button"
+                      className="type-letter"
+                      title={`Type ${abkai}`}
+                      aria-label={`Type ${abkai}`}
+                      onClick={() => insertAbkai(abkai)}
+                    >
+                      {abkai}
+                    </button>
+                  ) : (
+                    abkai
+                  )}
+                </th>
                 {(tab.alone ? [alone, initial, medial, final] : [initial, medial, final]).map((form) => (
                   <td key={form}>
                     <span className="manchu letter" lang="mnc">

@@ -1,25 +1,25 @@
 import { passwordProblems } from "@manchu-labelling/passwords";
 
+import { PasswordInput } from "../PasswordInput.tsx";
+
 /** A field for a new password, listing what it still needs as the user types. */
 export function NewPasswordField(props: { value: string; onChange: (value: string) => void; label?: string }) {
   const problems = props.value ? passwordProblems(props.value) : [];
   return (
-    <label>
-      {props.label ?? "New password"}
-      <input
-        type="password"
+    <>
+      <PasswordInput
+        label={props.label ?? "New password"}
         autoComplete="new-password"
-        required
         value={props.value}
-        onChange={(event) => props.onChange(event.target.value)}
-        aria-describedby="password-rules"
+        onChange={props.onChange}
+        describedBy="password-rules"
       />
       <span id="password-rules" className="hint">
         {problems.length > 0
           ? `Still needs ${problems.join(", ")}.`
           : "At least 12 characters, with upper- and lower-case letters, a number, and a symbol."}
       </span>
-    </label>
+    </>
   );
 }
 

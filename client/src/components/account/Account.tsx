@@ -12,6 +12,7 @@ import {
   startTwoFactor,
   type Account as AccountData,
 } from "../../api.ts";
+import { PasswordInput as ShownPasswordInput } from "../PasswordInput.tsx";
 import { isAcceptable, NewPasswordField } from "./PasswordField.tsx";
 
 /** A small form that shows its own error and success messages. */
@@ -56,16 +57,12 @@ function ActionForm(props: {
 
 function PasswordInput(props: { value: string; onChange: (value: string) => void; label?: string }) {
   return (
-    <label>
-      {props.label ?? "Your password"}
-      <input
-        type="password"
-        autoComplete="current-password"
-        required
-        value={props.value}
-        onChange={(event) => props.onChange(event.target.value)}
-      />
-    </label>
+    <ShownPasswordInput
+      label={props.label ?? "Your password"}
+      autoComplete="current-password"
+      value={props.value}
+      onChange={props.onChange}
+    />
   );
 }
 

@@ -109,6 +109,16 @@ export const answerQuiz = (
 export const resetQuiz = (scriptClass: string) =>
   request<{ progress: QuizProgress }>(`/api/training/${scriptClass}/reset`, { method: "POST" });
 export const getNextImage = () => request<{ image: LabelImage | null }>("/api/labelling/next");
+/** The user's last answer, while it can still be changed. */
+export interface LastLabel {
+  image: LabelImage;
+  label: Partial<Label> & { category: string; confidence?: Partial<Label["confidence"]> };
+  changeableUntil: string;
+}
+
+export const getLastLabel = () => request<{ last: LastLabel | null }>("/api/labelling/last");
+export const changeLabel = (id: string, label: Label) =>
+  request<void>(`/api/labelling/${id}/change`, { method: "POST", body: label });
 /** The image after the current one, so that it can load while the user labels. */
 export const getUpcomingImage = () => request<{ image: LabelImage | null }>("/api/labelling/upcoming");
 export const getContext = (id: string) => request<PageContext>(`/api/labelling/${id}/context`);

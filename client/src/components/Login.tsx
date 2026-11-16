@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 
 import { ApiError, logIn, logInWithCode, resendVerification, type Account } from "../api.ts";
 import { navigate } from "../navigation.ts";
+import { PasswordInput } from "./PasswordInput.tsx";
 
 type Step = "password" | "code" | "unverified";
 
@@ -72,16 +73,7 @@ export function Login({ onLogIn }: { onLogIn: (account: Account) => void }) {
               onChange={(event) => setEmail(event.target.value)}
             />
           </label>
-          <label>
-            Password
-            <input
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
+          <PasswordInput label="Password" autoComplete="current-password" value={password} onChange={setPassword} />
         </>
       ) : (
         <label>

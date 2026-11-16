@@ -949,3 +949,111 @@ button.danger:focus:enabled {
   gap: 1rem;
   align-items: center;
 }
+
+.session-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  align-items: baseline;
+  margin-bottom: 0.75rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.crop-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  align-items: center;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.crop-controls button:not(.link) {
+  min-width: 2rem;
+  padding: 0.1rem 0.4rem;
+}
+
+.crop-controls label {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.crop-controls input[type="range"] {
+  width: 5rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.page-view.small {
+  width: 12rem;
+  max-width: 100%;
+}
+
+.page-view.small .word-box {
+  outline-width: 2px;
+}
+
+.shortcuts dl {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.shortcuts dl > div {
+  display: contents;
+}
+
+kbd {
+  padding: 0 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+
+.password-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.password-row input {
+  flex: 1;
+  margin-top: 0;
+}
+
+.type-letter {
+  min-width: 2.5rem;
+  padding: 0.1rem 0.4rem;
+  font-weight: inherit;
+}
+
+.qualified {
+  max-width: 40rem;
+}
+
+.qualified h2 {
+  margin-top: 0;
+}
+
+.diff-letters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  font-size: 1.4rem;
+  letter-spacing: 0.05em;
+}
+
+.diff-missing {
+  color: var(--right);
+  font-weight: 700;
+  text-decoration: underline 3px;
+}
+
+.diff-extra {
+  color: var(--wrong);
+  text-decoration: line-through 3px;
+}

@@ -14,6 +14,7 @@ import { AbkaiField } from "./AbkaiField.tsx";
 import { categoryName, CategoryField } from "./CategoryField.tsx";
 import { CropImage } from "./CropImage.tsx";
 import { DisputeForm } from "./DisputeForm.tsx";
+import { diffLetters } from "../letter-diff.ts";
 import { ManchuText } from "./ManchuText.tsx";
 
 function Introduction({ onStart, lostToChecks }: { onStart: () => void; lostToChecks: boolean }) {
@@ -174,6 +175,30 @@ function ProgressMeter(props: {
   );
 }
 
+/** Shows the correct reading letter by letter, marking letters the user missed or added. */
+function LetterDiff({ expected, given }: { expected: string; given: string }) {
+  const letters = diffLetters(expected, given);
+  const missing = letters.filter(({ kind }) => kind === "missing").length;
+  const extra = letters.filter(({ kind }) => kind === "extra").length;
+  return (
+    <div className="letter-diff">
+      <p className="hint">
+        Letter by letter: <span className="diff-missing">underlined</span> letters are in the answer but not your
+        reading, and <span className="diff-extra">struck</span> letters are in your reading but not the answer.
+      </p>
+      <p className="diff-letters" aria-label={`${missing} letters missed and ${extra} letters added`}>
+        {letters.map(({ abkai, kind }, index) => (
+          <span key={index} className={kind === "same" ? undefined : `diff-${kind}`}>
+            {kind === "missing" && <span className="visually-hidden">missing </span>}
+            {kind === "extra" && <span className="visually-hidden">extra </span>}
+            {abkai}
+          </span>
+        ))}
+      </p>
+    </div>
+  );
+}
+
 function Feedback(props: {
   item: QuizItem;
   given: { category: string; abkai: string };
@@ -228,6 +253,9 @@ function Feedback(props: {
             </>
           )}
         </dl>
+        {!correct && answer.manchu && given.category === "manchu" && givenManchu && (
+          <LetterDiff expected={answer.manchu} given={givenManchu} />
+        )}
         <p className="hint">Source: {result.source}</p>
         {dispute === "closed" && (
           <button type="button" className="link" onClick={() => setDispute("open")}>
@@ -351,6 +379,8 @@ export function Training(props: {
   } | null>(null);
   const [error, setError] = useState("");
   const [round, setRound] = useState(0);
+  /** Set when a qualified user chooses to keep answering quiz images. */
+  const [keepGoing, setKeepGoing] = useState(false);
 
   function loadNext() {
     setAnswered(null);
@@ -368,6 +398,8 @@ export function Training(props: {
   const isNew = progress?.answered === 0;
   const shown = answered?.result.progress ?? progress;
   const canReset = Boolean(shown && (shown.answered > 0 || shown.qualified)) && !practice;
+  // Once qualified, the quiz ends here instead of carrying on with more images.
+  const finished = Boolean(progress?.qualified) && !practice && !keepGoing && !answered;
 
   async function startAgain() {
     if (!window.confirm(RESET_WARNING)) return;
@@ -408,7 +440,26 @@ export function Training(props: {
               onFinish={onQualified}
             />
           )}
-          {item && !answered && (
+          {finished && (
+            <section className="panel qualified">
+              <h2>You are qualified to label</h2>
+              <p>
+                You can start labelling now. You can also keep practising, which does not change anything.
+              </p>
+              <div className="actions">
+                <button type="button" onClick={onQualified} autoFocus>
+                  Start labelling
+                </button>
+                <button type="button" className="secondary" onClick={() => setPractice(true)}>
+                  Practise with synthetic images
+                </button>
+                <button type="button" className="secondary" onClick={() => setKeepGoing(true)}>
+                  Keep answering quiz images
+                </button>
+              </div>
+            </section>
+          )}
+          {item && !answered && !finished && (
             <Question
               key={item.id}
               item={item}

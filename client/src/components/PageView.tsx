@@ -3,12 +3,12 @@ import { useEffect, useState } from "react";
 import { getContext, type PageContext } from "../api.ts";
 
 /** The full page with the word's box drawn on it. */
-export function PageImage({ context }: { context: PageContext }) {
+export function PageImage({ context, small }: { context: PageContext; small?: boolean }) {
   const { box, width, height } = context;
   const percent = (value: number, total: number) => `${(value / total) * 100}%`;
   return (
-    <div className="page-view">
-      <img src={context.pageImageUrl} alt="The full page" />
+    <div className={small ? "page-view small" : "page-view"}>
+      <img src={context.pageImageUrl} alt="The page this word comes from, with the word outlined in red" />
       <div
         className="word-box"
         data-testid="word-box"
@@ -23,7 +23,7 @@ export function PageImage({ context }: { context: PageContext }) {
   );
 }
 
-export function PageView({ imageId }: { imageId: string }) {
+export function PageView({ imageId, small }: { imageId: string; small?: boolean }) {
   const [context, setContext] = useState<PageContext | null>(null);
 
   useEffect(() => {
@@ -31,5 +31,5 @@ export function PageView({ imageId }: { imageId: string }) {
   }, [imageId]);
 
   if (!context) return <p className="status">Loading page…</p>;
-  return <PageImage context={context} />;
+  return <PageImage context={context} small={small} />;
 }
