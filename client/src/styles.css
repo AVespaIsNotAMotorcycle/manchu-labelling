@@ -843,3 +843,13 @@ textarea {
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--line);
 }
+
+.credit {
+  max-width: 32rem;
+  margin-top: 2rem;
+}
+
+.credit form {
+  display: grid;
+  gap: 0.75rem;
+}

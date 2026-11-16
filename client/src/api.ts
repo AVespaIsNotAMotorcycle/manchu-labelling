@@ -156,6 +156,7 @@ export interface OwnDispute {
 }
 
 export interface Profile {
+  creditName: string | null;
   accuracy: { scriptClass: string; answered: number; passed: number; accuracy: number }[];
   checks: PastCheck[];
   disputes: OwnDispute[];
@@ -223,3 +224,6 @@ export interface LabelReviewItem {
 export const getLabelReviews = () => request<{ items: LabelReviewItem[] }>("/api/review/labels");
 export const reviewLabels = (id: string, answer: { category: string; transcription?: string }) =>
   request<void>(`/api/review/labels/${id}`, { method: "POST", body: answer });
+
+export const setCreditName = (name: string | null) =>
+  request<{ creditName: string | null }>("/api/profile/credit", { method: "PUT", body: { name } });

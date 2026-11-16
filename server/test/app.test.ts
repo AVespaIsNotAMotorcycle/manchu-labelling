@@ -1075,3 +1075,15 @@ test("a held-back agreement only counts labelers who were trusted at the time", 
   await labelBy(imageId, 1, manju);
   assert.equal((await (await reviewer.request("/api/review/held-back")).json()).items.length, 1);
 });
+
+test("users opt in to being credited by name, and can opt out", async () => {
+  const client = await loggedIn("person@example.com");
+  const put = (name: unknown) => client.request("/api/profile/credit", { method: "PUT", body: { name } });
+  assert.equal((await (await client.request("/api/profile")).json()).creditName, null);
+  assert.equal((await put("x".repeat(101))).status, 400);
+  assert.equal((await put("<b>")).status, 400);
+  assert.deepEqual(await (await put("  Ada Lovelace ")).json(), { creditName: "Ada Lovelace" });
+  assert.equal((await (await client.request("/api/profile")).json()).creditName, "Ada Lovelace");
+  assert.deepEqual(await (await put(null)).json(), { creditName: null });
+  assert.equal((await User.findOne({ email: "person@example.com" }).lean())?.creditName, undefined);
+});

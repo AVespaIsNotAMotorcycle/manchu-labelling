@@ -49,6 +49,7 @@ profileRouter.get("/", async (_request, response) => {
   const quizKeyOf = new Map(quizItems.map(({ _id, imageKey }) => [String(_id), imageKey]));
 
   response.json({
+    creditName: currentUser(response).creditName ?? null,
     accuracy: accuracyByClass(results),
     checks: shown.map(({ wordImage, scriptClass, passed, accuracy, label }) => {
       const given = labelOf.get(String(label));
@@ -107,4 +108,25 @@ profileRouter.post("/disputes", async (request, response) => {
     return;
   }
   response.status(201).end();
+});
+
+/**
+ * Sets or clears the name the user wants credited in releases. Names are listed separately from
+ * annotator IDs. A name already published stays in that release.
+ */
+profileRouter.put("/credit", async (request, response) => {
+  const { name } = request.body ?? {};
+  const trimmed = typeof name === "string" ? name.trim() : null;
+  if (
+    (name !== null && typeof name !== "string") ||
+    (trimmed && (trimmed.length > 100 || /[\p{Cc}<>]/u.test(trimmed)))
+  ) {
+    response.status(400).json({ error: "Please give a name of up to 100 characters" });
+    return;
+  }
+  const user = currentUser(response);
+  if (trimmed) user.creditName = trimmed;
+  else user.set("creditName", undefined);
+  await user.save();
+  response.json({ creditName: user.creditName ?? null });
 });
