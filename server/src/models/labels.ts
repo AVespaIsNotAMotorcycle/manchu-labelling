@@ -67,13 +67,39 @@ annotationSchema.pre("validate", function () {
 });
 annotationSchema.plugin(appendOnly);
 
+/**
+ * The states of a known label. `active` checks are handed out and graded. `retired` checks are no longer
+ * handed out, but earlier grades still count and the answer can be published. `withdrawn` answers were
+ * found unreliable, so grades against them no longer count. `corrected` is not used: a correction
+ * replaces the answer and keeps the old one in `history`.
+ */
+export const KNOWN_LABEL_STATES = ["active", "retired", "withdrawn", "corrected"] as const;
+
+const replacedAnswerSchema = new Schema(
+  {
+    category: { type: String, enum: CATEGORIES, required: true },
+    manchu: { type: String, match: STORED_MANCHU },
+    replacedAt: { type: Date, required: true },
+    /** The dispute that led to the correction. */
+    dispute: { type: Schema.Types.ObjectId, ref: "Dispute" },
+  },
+  { _id: false },
+);
+
 /** Answers to hidden checks. Nothing else in the database may mark an image as a check. */
 const knownLabelSchema = new Schema({
   wordImage: { type: Schema.Types.ObjectId, ref: "WordImage", required: true, unique: true },
   category: { type: String, enum: CATEGORIES, required: true },
   manchu: { type: String, match: STORED_MANCHU },
   origin: { type: String, required: true },
-  state: { type: String, enum: ["active", "retired", "corrected"], default: "active" },
+  state: { type: String, enum: KNOWN_LABEL_STATES, default: "active" },
+  /**
+   * When the image became a check. Only labels first made after this are graded against it. Records
+   * from before this field use the time in their ID.
+   */
+  activatedAt: { type: Date, default: Date.now, immutable: true },
+  /** Earlier answers, oldest first, kept when a dispute corrects the answer. */
+  history: { type: [replacedAnswerSchema], default: undefined },
 });
 
 /**

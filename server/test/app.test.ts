@@ -417,20 +417,36 @@ test("grades each user's latest label on a check, and counts failures in a row",
     category: "manchu",
     transcription: { abkai, manchu: abkaiToManchu(abkai).text },
     converterVersion: 1,
-    createdAt: new Date(2026, 0, 1, 0, minutes),
+    createdAt: new Date(Date.now() + minutes * 60_000),
   });
   // The first user corrects a wrong label. The second user misses a letter.
-  await Annotation.insertMany([label(first, "manjv", 0), label(first, "manju", 1), label(second, "manj", 2)]);
+  await Annotation.insertMany([label(first, "manjv", 1), label(first, "manju", 2), label(second, "manj", 3)]);
 
   const results = await checkResults();
   assert.deepEqual(
-    results.map(({ user, passed, scriptClass }) => [String(user), passed, scriptClass]),
+    results.map(({ user, passed, scriptClass, accuracy }) => [String(user), passed, scriptClass, accuracy]),
     [
-      [String(first), true, "regular"],
-      [String(second), false, "regular"],
+      [String(first), true, "regular", 1],
+      [String(second), false, "regular", 0.8],
     ],
   );
   assert.equal(summarizeChecks(results).get(`${second}:regular`)?.failedInARow, 1);
+});
+
+test("only grades labels made after an image became a check, and not on withdrawn checks", async () => {
+  const check = await makeCheck();
+  const label = (minutes: number) => ({
+    wordImage: check,
+    user: new Types.ObjectId(),
+    category: "chinese",
+    converterVersion: 1,
+    createdAt: new Date(Date.now() + minutes * 60_000),
+  });
+  await Annotation.insertMany([label(-10), label(10)]);
+  assert.equal((await checkResults()).length, 1);
+
+  await KnownLabel.updateOne({ wordImage: check }, { state: "withdrawn" });
+  assert.equal((await checkResults()).length, 0);
 });
 
 test("a check passes only on an exact match", () => {
