@@ -1,4 +1,4 @@
-import { randomBytes, scrypt, timingSafeEqual, type ScryptOptions } from "node:crypto";
+import { createHash, randomBytes, scrypt, timingSafeEqual, type ScryptOptions } from "node:crypto";
 
 import { passwordProblems } from "@manchu-labelling/passwords";
 
@@ -59,15 +59,57 @@ async function hash(password: string): Promise<string> {
   return ["scrypt", COST, BLOCK_SIZE, PARALLELIZATION, salt.toString("base64"), key.toString("base64")].join("$");
 }
 
-/** Every new password passes through here, so the rules cannot be skipped by a new route. */
-export async function hashPassword(password: string): Promise<string> {
+/** A new password that breaks the rules. Its message can be shown to the user. */
+export class PasswordRejected extends Error {}
+
+const BREACH_TIMEOUT_MS = 3000;
+
+/**
+ * Whether a password appears in Have I Been Pwned's list of breached passwords. Only the first five
+ * characters of its SHA-1 hash are sent, and the response is padded so that its size reveals nothing.
+ * If the service cannot be reached, the check is skipped. Set PWNED_PASSWORDS=off to skip it always.
+ */
+export async function isBreached(password: string, fetcher: typeof fetch = fetch): Promise<boolean> {
+  if (process.env.PWNED_PASSWORDS === "off") return false;
+  const digest = createHash("sha1").update(password).digest("hex").toUpperCase();
+  const prefix = digest.slice(0, 5);
+  const suffix = digest.slice(5);
+  try {
+    const response = await fetcher(`https://api.pwnedpasswords.com/range/${prefix}`, {
+      headers: { "Add-Padding": "true", "User-Agent": "manchu-labelling" },
+      signal: AbortSignal.timeout(BREACH_TIMEOUT_MS),
+    });
+    if (!response.ok) return false;
+    for (const line of (await response.text()).split("\n")) {
+      const [candidate, count] = line.trim().split(":");
+      if (candidate === suffix && Number(count) > 0) return true;
+    }
+    return false;
+  } catch {
+    console.warn("Could not reach the breached password check, so it was skipped");
+    return false;
+  }
+}
+
+/**
+ * Every new password passes through here, so the rules and the breach check cannot be skipped by a new
+ * route.
+ */
+export async function hashPassword(password: string, fetcher?: typeof fetch): Promise<string> {
   const problems = passwordProblems(password);
-  if (problems.length > 0) throw new Error(`Password needs ${problems.join(", ")}`);
+  if (problems.length > 0) throw new PasswordRejected(`Password needs ${problems.join(", ")}`);
+  if (await isBreached(password, fetcher)) {
+    throw new PasswordRejected(
+      "This password has appeared in a data breach, so it is not safe to use. Please choose another.",
+    );
+  }
   return hash(password);
 }
 
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
-  const [, cost, blockSize, parallelization, salt, key] = stored.split("$");
+  const [scheme, cost, blockSize, parallelization, salt, key] = stored.split("$");
+  // Deleted accounts have a value that is not a hash, so nothing matches it.
+  if (scheme !== "scrypt") return false;
   const expected = Buffer.from(key ?? "", "base64");
   const actual = await derive(password, Buffer.from(salt ?? "", "base64"), {
     N: Number(cost),

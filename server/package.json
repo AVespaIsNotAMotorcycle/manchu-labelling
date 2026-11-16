@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "node --watch src/index.ts",
     "start": "node src/index.ts",
-    "test": "node --test test/*.test.ts",
+    "test": "PWNED_PASSWORDS=off node --test test/*.test.ts",
     "import-segments": "node src/scripts/import-segments.ts",
     "create-user": "node src/scripts/create-user.ts",
     "set-role": "node src/scripts/set-role.ts",
+    "create-invite": "node src/scripts/create-invite.ts",
     "import-training": "node src/scripts/import-training.ts",
     "split-real-training": "node src/scripts/split-real-training.ts",
     "import-known-labels": "node src/scripts/import-known-labels.ts",
@@ -31,6 +32,7 @@
     "express": "^5.3.0",
     "express-rate-limit": "^8.7.3",
     "express-session": "^1.19.0",
-    "mongoose": "^9.12.0"
+    "mongoose": "^9.12.0",
+    "nodemailer": "^10.6.0"
   }
 }

@@ -145,11 +145,14 @@ test("reports health without logging in", async () => {
   assert.deepEqual(await response.json(), { status: "ok" });
 });
 
-test("there is no way to register", async () => {
+test("there is no way to register without an invite", async () => {
   const body = { email: "new@example.com", password: PASSWORD };
-  for (const path of ["/api/auth/register", "/api/auth/signup", "/api/users"]) {
-    const response = await new Client().request(path, { method: "POST", body });
-    assert.equal(response.status, 404);
+  for (const path of ["/api/auth/signup", "/api/users"]) {
+    assert.equal((await new Client().request(path, { method: "POST", body })).status, 404);
+  }
+  for (const invite of [undefined, "", "made-up"]) {
+    const response = await new Client().request("/api/auth/register", { method: "POST", body: { ...body, invite } });
+    assert.equal(response.status, 400);
   }
   assert.equal(await User.countDocuments(), 0);
 });
@@ -1142,7 +1145,7 @@ test("login limits are kept in MongoDB, and also count failures per account from
   assert.equal(record?.hits, 3);
   assert.ok(record && record.resetAt > new Date());
   const warnings = (console.warn as unknown as { mock: { calls: { arguments: string[] }[] } }).mock.calls;
-  assert.match(warnings[0]?.arguments[0] ?? "", /"event":"login.account_limited"/);
+  assert.match(warnings[0]?.arguments[0] ?? "", /"event":"login-account.limited"/);
 });
 
 test("a rate limit window starts again once it ends", async () => {

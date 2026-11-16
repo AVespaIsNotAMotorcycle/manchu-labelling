@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 
 import { createApp } from "./app.ts";
 import { connectDatabase } from "./db.ts";
+import { createMailer, sendAlertsBy } from "./mail.ts";
 
 const port = Number(process.env.PORT ?? 3001);
 const production = process.env.NODE_ENV === "production";
@@ -17,6 +18,15 @@ function sessionSecret(): string {
   return "development-only-session-secret";
 }
 
+if (production) {
+  for (const name of ["APP_ORIGIN", "SECRETS_KEY"]) {
+    if (!process.env[name]) throw new Error(`${name} must be set in production`);
+  }
+}
+
+const mailer = createMailer();
+sendAlertsBy(mailer);
+
 await connectDatabase();
 await mongoose.connection.syncIndexes();
 
@@ -24,6 +34,8 @@ createApp({
   sessionSecret: sessionSecret(),
   secureCookies: production,
   persistentRateLimits: true,
+  mailer,
+  requireTwoFactorForStaff: production || process.env.REQUIRE_TWO_FACTOR === "true",
   origin: process.env.APP_ORIGIN,
   sessionStore: MongoStore.create({
     client: mongoose.connection.getClient() as never,

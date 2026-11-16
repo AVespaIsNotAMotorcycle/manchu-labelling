@@ -40,6 +40,7 @@ npm run check-results -w server                                 # each user's hi
 npm run hold-back -w server                                     # hold back words imported before the rule
 npm run create-user -w server -- person@example.com [--admin | --reviewer]   # prompts for the password
 npm run set-role -w server -- person@example.com reviewer        # labeler, reviewer, or admin
+npm run create-invite -w server -- [--email person@example.com] [--role reviewer]   # prints a link
 npm run set-volume -w server -- URN-3:FHCL:10499177 --split train --license <name> --rights cleared
 ANNOTATOR_ID_SECRET=... npm run export-release -w server -- 0.1.0   # writes data/releases/0.1.0
 npm run set-release-doi -w server -- 0.1.0 10.5281/zenodo.<id>    # after uploading

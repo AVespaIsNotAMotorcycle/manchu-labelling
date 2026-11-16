@@ -8,6 +8,7 @@ import { labellingRouter } from "./routes/labelling.ts";
 import { profileRouter } from "./routes/profile.ts";
 import { reviewRouter } from "./routes/review.ts";
 import { trainingRouter } from "./routes/training.ts";
+import { createMailer, type Mailer } from "./mail.ts";
 import { HashingBusyError } from "./passwords.ts";
 import { MongoRateLimitStore } from "./rate-limit.ts";
 import { requireSameOrigin, securityHeaders } from "./security.ts";
@@ -29,12 +30,18 @@ export interface AppOptions {
   accountAttempts?: number;
   /** Keeps rate limit counts in MongoDB, so that they survive a restart. */
   persistentRateLimits?: boolean;
+  /** Sends email. Defaults to SMTP_URL, or the console in development. */
+  mailer?: Mailer;
+  /** Whether reviewers and admins must turn on two-factor authentication. On in production. */
+  requireTwoFactorForStaff?: boolean;
   /** The address users reach the app at, such as https://labels.example.org. Derived from the request if unset. */
   origin?: string;
 }
 
 export function createApp(options: AppOptions): express.Express {
   const app = express();
+  app.locals.requireTwoFactorForStaff = options.requireTwoFactorForStaff ?? false;
+  app.locals.origin = options.origin;
   app.disable("x-powered-by");
   if (options.secureCookies) app.set("trust proxy", 1);
   app.use(securityHeaders({ https: options.secureCookies }));
@@ -64,6 +71,9 @@ export function createApp(options: AppOptions): express.Express {
       loginAttempts: options.loginAttempts ?? DEFAULT_LOGIN_ATTEMPTS,
       accountAttempts: options.accountAttempts ?? DEFAULT_ACCOUNT_ATTEMPTS,
       rateLimitStore: options.persistentRateLimits ? (prefix) => new MongoRateLimitStore(prefix) : undefined,
+      mailer: options.mailer ?? createMailer(),
+      appUrl: options.origin,
+      requireTwoFactorForStaff: options.requireTwoFactorForStaff ?? false,
     }),
   );
   app.use("/api/labelling", labellingRouter);

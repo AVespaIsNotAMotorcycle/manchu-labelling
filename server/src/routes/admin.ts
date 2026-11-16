@@ -2,8 +2,10 @@ import { Router } from "express";
 import { Types } from "mongoose";
 
 import { currentUser, requireAdmin, requireUser } from "../auth.ts";
+import { AccountError, createInvite, inviteUrl } from "../accounts.ts";
 import { ruleOnReview } from "../crop-reviews.ts";
 import { CropReview, WordImage } from "../models/crops.ts";
+import { Invite, ROLES } from "../models/users.ts";
 
 export const adminRouter = Router();
 adminRouter.use(requireUser, requireAdmin);
@@ -41,5 +43,58 @@ adminRouter.post("/crop-reviews/:id/ruling", async (request, response) => {
     response.status(409).json({ error: (error as Error).message });
     return;
   }
+  response.status(204).end();
+});
+
+/** Makes an invite link. Only the link's hash is kept, so the link is shown once. */
+adminRouter.post("/invites", async (request, response) => {
+  const { email, role, note } = request.body ?? {};
+  if (
+    (email !== undefined && email !== "" && typeof email !== "string") ||
+    (role !== undefined && !ROLES.includes(role)) ||
+    (note !== undefined && (typeof note !== "string" || note.length > 200))
+  ) {
+    response.status(400).json({ error: "This invite is not valid" });
+    return;
+  }
+  try {
+    const { token, invite } = await createInvite({
+      createdBy: currentUser(response)._id,
+      email: email || undefined,
+      role,
+      note: note?.trim() || undefined,
+    });
+    const origin = request.app.locals.origin ?? `${request.protocol}://${request.get("Host")}`;
+    response.status(201).json({ url: inviteUrl(origin, token), expiresAt: invite.expiresAt });
+  } catch (error) {
+    if (!(error instanceof AccountError)) throw error;
+    response.status(400).json({ error: error.message });
+  }
+});
+
+/** Recent invites and whether they were used, without their links. */
+adminRouter.get("/invites", async (_request, response) => {
+  const invites = await Invite.find().sort({ createdAt: -1 }).limit(50).lean();
+  const now = new Date();
+  response.json({
+    items: invites.map((invite) => ({
+      id: String(invite._id),
+      email: invite.email,
+      role: invite.role,
+      note: invite.note,
+      createdAt: invite.createdAt,
+      expiresAt: invite.expiresAt,
+      status: invite.usedAt ? "used" : invite.expiresAt <= now ? "expired" : "open",
+    })),
+  });
+});
+
+/** Withdraws an invite that has not been used. */
+adminRouter.delete("/invites/:id", async (request, response) => {
+  if (!Types.ObjectId.isValid(request.params.id)) {
+    response.status(404).end();
+    return;
+  }
+  await Invite.updateOne({ _id: request.params.id, usedAt: { $exists: false } }, { expiresAt: new Date() });
   response.status(204).end();
 });
