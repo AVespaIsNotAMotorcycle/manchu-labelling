@@ -1,7 +1,7 @@
 import { abkaiToManchu } from "@manchu-labelling/script";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { getNextImage, submitLabel, type LabelImage } from "../api.ts";
+import { ApiError, getNextImage, submitLabel, type LabelImage } from "../api.ts";
 import { AbkaiField } from "./AbkaiField.tsx";
 import { CategoryField } from "./CategoryField.tsx";
 import { CropImage } from "./CropImage.tsx";
@@ -171,7 +171,8 @@ function LabelForm({ image, onDone }: { image: LabelImage; onDone: () => void })
   );
 }
 
-export function Labelling() {
+/** `onNotQualified` is called if the user can no longer label, so that the app can send them to training. */
+export function Labelling({ onNotQualified }: { onNotQualified: () => void }) {
   const [image, setImage] = useState<LabelImage | null | undefined>(undefined);
   const [error, setError] = useState("");
 
@@ -179,7 +180,10 @@ export function Labelling() {
     setImage(undefined);
     getNextImage()
       .then(({ image: next }) => setImage(next))
-      .catch((failure: Error) => setError(failure.message));
+      .catch((failure: Error) => {
+        if (failure instanceof ApiError && failure.status === 403) onNotQualified();
+        else setError(failure.message);
+      });
   }
 
   useEffect(loadNext, []);

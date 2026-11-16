@@ -1,5 +1,6 @@
 import type { Types } from "mongoose";
 
+import { checkResults } from "./checks.ts";
 import type { Category } from "./models/labels.ts";
 import type { ScriptClass } from "./models/sources.ts";
 import {
@@ -42,6 +43,8 @@ export interface Progress {
   answered: number;
   phases: PhaseProgress[];
   qualified: boolean;
+  /** Set when qualification was lost to hidden checks. The user is not told which images they were. */
+  lostToChecks: boolean;
 }
 
 interface Answer {
@@ -59,7 +62,7 @@ const correctInARow = (results: readonly boolean[]) => results.length - 1 - resu
 export function summarizeAnswers(
   answers: readonly Answer[],
   phasesWithImages: ReadonlySet<string>,
-): Omit<Progress, "qualified"> & { passes: boolean } {
+): Omit<Progress, "qualified" | "lostToChecks"> & { passes: boolean } {
   const results = TRAINING_KINDS.map((): boolean[] => []);
   const firstUnpassed = (from: number) => {
     let index = from;
@@ -91,17 +94,80 @@ export function summarizeAnswers(
   return { answered: answers.length, phases, passes: current === TRAINING_KINDS.length };
 }
 
-/** When the user last started the quiz for a class again, if ever. */
-async function lastReset(user: Id, scriptClass: ScriptClass): Promise<Date | null> {
-  const reset = await QuizReset.findOne({ user, scriptClass }, "createdAt").sort({ createdAt: -1 }).lean();
-  return reset?.createdAt ?? null;
+/** Failed hidden checks in a row that cost a user their qualification for a class. */
+export const FAILED_CHECKS_TO_LOSE = 5;
+
+export interface QualificationState {
+  qualified: boolean;
+  /** Quiz answers from this moment on count towards passing again. Null if there was never a reset. */
+  since: Date | null;
+  /** Whether the latest loss of qualification came from failed hidden checks, not a reset. */
+  lostToChecks: boolean;
 }
 
-/** Works out progress from the answers given since the latest reset. */
+type TimelineEvent =
+  | { at: Date; type: "pass" }
+  | { at: Date; type: "reset" }
+  | { at: Date; type: "check"; passed: boolean };
+
+/**
+ * Replays a user's quiz passes, resets, and hidden check results in a class, in order. A pass qualifies
+ * the user. A reset, or 5 failed checks in a row while qualified, takes it away until the next pass.
+ * Grades are worked out from current answers, so a dispute that overturns a check can restore
+ * qualification.
+ */
+export function replayQualification(events: readonly TimelineEvent[]): QualificationState {
+  const order = { reset: 0, pass: 1, check: 2 };
+  const sorted = [...events].sort((a, b) => a.at.getTime() - b.at.getTime() || order[a.type] - order[b.type]);
+  const state: QualificationState = { qualified: false, since: null, lostToChecks: false };
+  let failed = 0;
+  for (const event of sorted) {
+    if (event.type === "pass") {
+      state.qualified = true;
+      failed = 0;
+    } else if (event.type === "reset") {
+      Object.assign(state, { qualified: false, since: event.at, lostToChecks: false });
+      failed = 0;
+    } else if (state.qualified) {
+      failed = event.passed ? 0 : failed + 1;
+      if (failed >= FAILED_CHECKS_TO_LOSE) {
+        Object.assign(state, { qualified: false, since: event.at, lostToChecks: true });
+        failed = 0;
+      }
+    }
+  }
+  return state;
+}
+
+export async function qualificationStates(user: Id): Promise<Map<ScriptClass, QualificationState>> {
+  const [passes, resets, checks] = await Promise.all([
+    Qualification.find({ user }, "scriptClass qualifiedAt").lean(),
+    QuizReset.find({ user }, "scriptClass createdAt").lean(),
+    checkResults({ users: [user] }),
+  ]);
+  const events = new Map<ScriptClass, TimelineEvent[]>();
+  const add = (scriptClass: string, event: TimelineEvent) => {
+    const list = events.get(scriptClass as ScriptClass) ?? [];
+    list.push(event);
+    events.set(scriptClass as ScriptClass, list);
+  };
+  for (const { scriptClass, qualifiedAt } of passes) add(scriptClass, { at: qualifiedAt, type: "pass" });
+  for (const { scriptClass, createdAt } of resets) add(scriptClass, { at: createdAt, type: "reset" });
+  for (const { scriptClass, at, passed } of checks) add(scriptClass, { at, type: "check", passed });
+  return new Map([...events].map(([scriptClass, list]) => [scriptClass, replayQualification(list)]));
+}
+
+const NEVER_QUALIFIED: QualificationState = { qualified: false, since: null, lostToChecks: false };
+
+async function qualificationState(user: Id, scriptClass: ScriptClass): Promise<QualificationState> {
+  return (await qualificationStates(user)).get(scriptClass) ?? NEVER_QUALIFIED;
+}
+
+/** Works out quiz progress from the answers given since qualification was last lost. */
 async function summarize(user: Id, scriptClass: ScriptClass, since?: Date | null) {
-  const reset = since === undefined ? await lastReset(user, scriptClass) : since;
+  const from = since === undefined ? (await qualificationState(user, scriptClass)).since : since;
   const [answers, phasesWithImages] = await Promise.all([
-    TrainingAttempt.find({ user, scriptClass, ...(reset ? { createdAt: { $gt: reset } } : {}) }, "correct kind")
+    TrainingAttempt.find({ user, scriptClass, ...(from ? { createdAt: { $gt: from } } : {}) }, "correct kind")
       .sort({ createdAt: 1, _id: 1 })
       .lean(),
     TrainingItem.distinct("kind", { scriptClass, active: { $ne: false } }),
@@ -109,34 +175,16 @@ async function summarize(user: Id, scriptClass: ScriptClass, since?: Date | null
   return summarizeAnswers(answers, new Set(phasesWithImages));
 }
 
-/**
- * Whether the user may label a class. A reset after qualifying suspends it until the quiz is passed
- * again. Without a reset, qualification stands even if the quiz changes later.
- */
-async function isQualified(user: Id, scriptClass: ScriptClass, qualifiedAt?: Date): Promise<boolean> {
-  const since = qualifiedAt ?? (await Qualification.findOne({ user, scriptClass }).lean())?.qualifiedAt;
-  if (!since) return false;
-  const reset = await lastReset(user, scriptClass);
-  if (!reset || reset < since) return true;
-  return (await summarize(user, scriptClass, reset)).passes;
-}
-
 export async function getProgress(user: Id, scriptClass: ScriptClass): Promise<Progress> {
-  const [summary, qualified] = await Promise.all([
-    summarize(user, scriptClass),
-    isQualified(user, scriptClass),
-  ]);
-  const { passes: _passes, ...progress } = summary;
-  return { ...progress, qualified };
+  const state = await qualificationState(user, scriptClass);
+  const { passes: _passes, ...progress } = await summarize(user, scriptClass, state.since);
+  return { ...progress, qualified: state.qualified, lostToChecks: state.lostToChecks };
 }
 
 /** Script classes the user may label. */
 export async function qualifiedClasses(user: Id): Promise<ScriptClass[]> {
-  const qualifications = await Qualification.find({ user }, "scriptClass qualifiedAt").lean();
-  const allowed = await Promise.all(
-    qualifications.map(({ scriptClass, qualifiedAt }) => isQualified(user, scriptClass, qualifiedAt)),
-  );
-  return qualifications.filter((_, index) => allowed[index]).map(({ scriptClass }) => scriptClass);
+  const states = await qualificationStates(user);
+  return [...states].filter(([, { qualified }]) => qualified).map(([scriptClass]) => scriptClass);
 }
 
 /**
@@ -144,11 +192,9 @@ export async function qualifiedClasses(user: Id): Promise<ScriptClass[]> {
  * already answered still come last. Returns false if there is nothing to reset.
  */
 export async function resetQuiz(user: Id, scriptClass: ScriptClass): Promise<boolean> {
-  const [summary, qualified] = await Promise.all([
-    summarize(user, scriptClass),
-    isQualified(user, scriptClass),
-  ]);
-  if (summary.answered === 0 && !qualified) return false;
+  const state = await qualificationState(user, scriptClass);
+  const summary = await summarize(user, scriptClass, state.since);
+  if (summary.answered === 0 && !state.qualified) return false;
   await QuizReset.create({ user, scriptClass });
   return true;
 }
@@ -234,9 +280,9 @@ export async function recordAnswer(
   });
   await TrainingState.updateOne({ _id: state._id }, { $unset: { [field]: "" } });
 
-  const { passes } = await summarize(user, scriptClass);
-  if (passes) {
-    await Qualification.updateOne({ user, scriptClass }, { $setOnInsert: { user, scriptClass } }, { upsert: true });
+  const qualification = await qualificationState(user, scriptClass);
+  if (!qualification.qualified && (await summarize(user, scriptClass, qualification.since)).passes) {
+    await Qualification.create({ user, scriptClass });
   }
   return { correct, item, progress: await getProgress(user, scriptClass) };
 }

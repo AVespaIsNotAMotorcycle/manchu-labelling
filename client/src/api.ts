@@ -39,6 +39,8 @@ export interface QuizProgress {
   answered: number;
   phases: QuizPhase[];
   qualified: boolean;
+  /** Qualification was lost to hidden checks. */
+  lostToChecks: boolean;
 }
 
 export interface QuizItem {
@@ -58,6 +60,16 @@ export interface TrainingStatus {
   qualified: string[];
 }
 
+/** An error from the API, with its HTTP status. */
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 async function request<T>(path: string, options?: { method: string; body?: unknown }): Promise<T> {
   const response = await fetch(path, {
     method: options?.method ?? "GET",
@@ -66,7 +78,7 @@ async function request<T>(path: string, options?: { method: string; body?: unkno
   });
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    throw new Error(body?.error ?? "Something went wrong");
+    throw new ApiError(body?.error ?? "Something went wrong", response.status);
   }
   return (response.status === 204 || response.status === 201 ? undefined : response.json()) as T;
 }

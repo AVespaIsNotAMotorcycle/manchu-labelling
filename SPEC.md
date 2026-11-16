@@ -300,6 +300,10 @@ qualification for that script class and must pass the quiz again before labellin
 - The message to the user is general. It does not say which images were checks.
 - Qualification is lost after **5 failed checks in a row**. A check fails if any character is missing or
   wrong, so only an exact match passes.
+- As built: each quiz pass is recorded, and whether a user is qualified is worked out each time by
+  replaying their passes, resets, and graded checks in order. Losing qualification is not stored, so
+  a dispute that overturns a check restores it automatically. Only checks labelled while qualified
+  count towards a run, and a pass starts a new run.
 
 ### Feedback and disputes
 
@@ -462,7 +466,8 @@ dataset hub such as Hugging Face.
 | `trainingItems` | Quiz images, their answers, and their sources |
 | `trainingAttempts` | Append-only quiz answers |
 | `trainingStates` | The image each user must answer next |
-| `qualifications` | Which script classes each user may label |
+| `qualifications` | Each pass of the quiz, by user and script class |
+| `quizResets` | Each time a user chose to take the quiz again |
 | `disputes` | Disputed test images and their outcomes |
 | `users` | Account, role, license agreement, credit preference |
 | `releases` | Version, parameters used, DOI |

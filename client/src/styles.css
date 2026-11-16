@@ -164,6 +164,12 @@ button.link:focus:enabled {
   max-width: 44rem;
 }
 
+.notice {
+  padding: 0.75rem;
+  border: 2px solid var(--text);
+  border-radius: var(--radius);
+}
+
 .introduction h1 {
   margin-top: 0;
   font-size: 2rem;

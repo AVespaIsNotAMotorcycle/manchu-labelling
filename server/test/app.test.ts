@@ -689,6 +689,54 @@ test("a qualified user can reset, and there is nothing to reset before the first
   assert.equal((await resetQuiz(qualified)).status, 409);
 });
 
+/** Makes hidden checks whose answer is manju, and labels each one for the user, a minute apart. */
+async function labelChecks(user: Types.ObjectId, readings: string[], start = 1) {
+  const image = await WordImage.findById(imageId).orFail();
+  const checks = [];
+  for (const [index, abkai] of readings.entries()) {
+    const number = start + index;
+    const key = `44444444-4444-4444-8444-${String(number).padStart(12, "0")}.jpg`;
+    const check = await makeWord(key, image.page, { word: 100 + number });
+    await KnownLabel.create({ wordImage: check._id, category: "manchu", manchu: "ᠮᠠᠨᠵᡠ", origin: "test" });
+    await Annotation.create({
+      wordImage: check._id,
+      user,
+      category: "manchu",
+      transcription: { abkai, manchu: abkaiToManchu(abkai).text },
+      converterVersion: 1,
+      createdAt: new Date(Date.now() + number * 60_000),
+    });
+    checks.push(check._id);
+  }
+  return checks;
+}
+
+test("5 failed checks in a row cost qualification until the quiz is passed again", async () => {
+  await makeBank(40);
+  const client = await loggedIn("person@example.com");
+  const user = (await User.findOne({ email: "person@example.com" }).orFail())._id;
+  // A quiz answer given before the loss does not count afterwards.
+  await answerNext(client, MANCHU);
+  await labelChecks(user, ["manju", "manjv", "manjv", "manjv", "manjv"]);
+  assert.equal((await client.request("/api/labelling/next")).status, 200);
+
+  await labelChecks(user, ["manjv"], 6);
+  assert.equal((await client.request("/api/labelling/next")).status, 403);
+  const { progress } = await (await client.request("/api/training/regular/next")).json();
+  assert.equal(progress.qualified, false);
+  assert.equal(progress.lostToChecks, true);
+  assert.equal(progress.answered, 0);
+});
+
+test("overturning a failed check restores qualification lost to it", async () => {
+  const client = await loggedIn("person@example.com");
+  const user = (await User.findOne({ email: "person@example.com" }).orFail())._id;
+  const [first] = await labelChecks(user, ["manjv", "manjv", "manjv", "manjv", "manjv"]);
+  assert.equal((await client.request("/api/labelling/next")).status, 403);
+  await KnownLabel.updateOne({ wordImage: first }, { state: "withdrawn" });
+  assert.equal((await client.request("/api/labelling/next")).status, 200);
+});
+
 test("moves quiz images from before phases into printed and manuscript", async () => {
   const items = TrainingItem.collection;
   const base = { scriptClass: "regular", source: "test", active: true };

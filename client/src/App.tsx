@@ -53,7 +53,14 @@ function Workspace(props: {
             </button>
           )}
         </nav>
-        {view === "label" && <Labelling />}
+        {view === "label" && (
+          <Labelling
+            onNotQualified={() => {
+              onStatusChange();
+              onViewChange("train");
+            }}
+          />
+        )}
         {view === "admin" && props.isAdmin && <HeldBackReview />}
         {view === "train" &&
           (scriptClass ? (

@@ -15,10 +15,16 @@ import { categoryName, CategoryField } from "./CategoryField.tsx";
 import { CropImage } from "./CropImage.tsx";
 import { ManchuText } from "./ManchuText.tsx";
 
-function Introduction({ onStart }: { onStart: () => void }) {
+function Introduction({ onStart, lostToChecks }: { onStart: () => void; lostToChecks: boolean }) {
   return (
     <section className="panel introduction">
       <h1>Training</h1>
+      {lostToChecks && (
+        <p className="notice" role="status">
+          Some of your recent labels did not match what we expected, so please take the quiz again before
+          you go back to labelling. The labels you have already made are kept.
+        </p>
+      )}
       <p>
         Before you label, this quiz checks that you can read the script. For each image, say what it
         shows. If it is Manchu, type exactly what is written, using Abkai. The letter reference and its
@@ -363,7 +369,7 @@ export function Training(props: {
     <main>
       {error && <p role="alert">{error}</p>}
       {progress && isNew && !started ? (
-        <Introduction onStart={() => setStarted(true)} />
+        <Introduction onStart={() => setStarted(true)} lostToChecks={progress.lostToChecks} />
       ) : (
         <>
           {shown && (

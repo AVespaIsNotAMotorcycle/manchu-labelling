@@ -79,3 +79,39 @@ test("converts the dataset's spelling to Abkai", () => {
   assert.equal(datasetWordToAbkai("g'ao"), "g'ao");
   assert.equal(datasetWordToAbkai("jurgan"), "jurgan");
 });
+
+test("qualification follows passes, resets, and runs of failed checks", async () => {
+  const { replayQualification } = await import("../src/training.ts");
+  const at = (minute: number) => new Date(2026, 0, 1, 0, minute);
+  const fails = (from: number, count: number) =>
+    Array.from({ length: count }, (_, index) => ({ at: at(from + index), type: "check" as const, passed: false }));
+
+  assert.equal(replayQualification([]).qualified, false);
+  assert.equal(replayQualification([{ at: at(0), type: "pass" }]).qualified, true);
+
+  const lost = replayQualification([{ at: at(0), type: "pass" }, ...fails(1, 5)]);
+  assert.deepEqual(lost, { qualified: false, since: at(5), lostToChecks: true });
+
+  // A pass in the middle breaks the run.
+  const kept = replayQualification([
+    { at: at(0), type: "pass" },
+    ...fails(1, 4),
+    { at: at(5), type: "check", passed: true },
+    ...fails(6, 4),
+  ]);
+  assert.equal(kept.qualified, true);
+
+  // Checks before the first pass, or while unqualified, are ignored, and a new pass starts a new run.
+  const regained = replayQualification([
+    ...fails(0, 5),
+    { at: at(10), type: "pass" },
+    ...fails(11, 5),
+    ...fails(16, 5),
+    { at: at(30), type: "pass" },
+    ...fails(31, 4),
+  ]);
+  assert.equal(regained.qualified, true);
+
+  const reset = replayQualification([{ at: at(0), type: "pass" }, { at: at(1), type: "reset" }]);
+  assert.deepEqual(reset, { qualified: false, since: at(1), lostToChecks: false });
+});

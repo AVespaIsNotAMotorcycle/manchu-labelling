@@ -64,16 +64,17 @@ quizResetSchema.index({ user: 1, scriptClass: 1, createdAt: -1 });
 quizResetSchema.plugin(appendOnly);
 
 /**
- * Permission to label a script class. Hidden checks, not this record, decide if labels count later.
- * `qualifiedAt` is the first pass. A reset after it suspends the permission until the user passes again,
- * which is worked out from their answers rather than stored.
+ * A pass of the quiz for a script class. A user may label a class from their latest pass until a reset
+ * or 5 failed hidden checks in a row, which is worked out from history rather than stored. Hidden
+ * checks, not this record, decide if labels count later.
  */
 const qualificationSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: "User", required: true },
   scriptClass: { type: String, enum: SCRIPT_TYPES, required: true },
   qualifiedAt: { type: Date, default: Date.now, immutable: true },
 });
-qualificationSchema.index({ user: 1, scriptClass: 1 }, { unique: true });
+qualificationSchema.index({ user: 1, scriptClass: 1, qualifiedAt: 1 });
+qualificationSchema.plugin(appendOnly);
 
 export const TrainingItem = model("TrainingItem", trainingItemSchema);
 export const TrainingAttempt = model("TrainingAttempt", trainingAttemptSchema);
