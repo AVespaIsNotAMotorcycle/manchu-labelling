@@ -453,7 +453,8 @@ labels under the pseudonymous ID, since they are already licensed CC BY 4.0.
 - A security review of the whole authentication flow. A first review is recorded in `SECURITY.md`,
   with the risks that remain. It was done by the AI assistant that wrote the code, so an independent
   review is still needed.
-- Permission for any font served to users (see below)
+- ~~Permission for any font served to users~~ Done by not serving them: production serves only Noto Sans
+  Mongolian, and users add their own fonts, which stay in their browser (see below).
 
 ### Fonts
 
@@ -463,6 +464,13 @@ fonts present, falling back to Noto Sans Mongolian, which is bundled.
 
 Serving a font to a browser gives a copy of it to that user. **Before non-test users get access, each
 font must have permission from its rights holder or be removed.**
+
+Decided by the owner on 2026-11-16: the app does not serve these fonts. Users add font files they have
+themselves, from the top bar or the Account page, which links to the Manchu Studies Group's fonts page
+(<https://www.manchustudiesgroup.org/typing-manchu/>, which offers the XM fonts but states no license).
+An added font stays in that browser's IndexedDB and is never sent to the server, so only that user can
+use it. Production serves only Noto Sans Mongolian, which is under the SIL Open Font License. In
+development, fonts in `client/src/fonts/` are still offered. The Abkai font is not on that page.
 
 ## 9. Dataset releases
 

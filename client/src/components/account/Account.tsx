@@ -1,5 +1,5 @@
 import QRCode from "qrcode";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import {
   changePassword,
@@ -12,6 +12,7 @@ import {
   startTwoFactor,
   type Account as AccountData,
 } from "../../api.ts";
+import { addOwnFont, FONT_SOURCE_URL, removeOwnFont, useFonts } from "../../fonts.ts";
 import { PasswordInput as ShownPasswordInput } from "../PasswordInput.tsx";
 import { isAcceptable, NewPasswordField } from "./PasswordField.tsx";
 
@@ -255,6 +256,73 @@ function TwoFactor({ account, onChange }: { account: AccountData; onChange: () =
   );
 }
 
+/** The fonts the user added, which stay in this browser and are never sent to the server. */
+function OwnFonts() {
+  const fonts = useFonts().filter(({ own }) => own);
+  const file = useRef<HTMLInputElement>(null);
+  const [message, setMessage] = useState("");
+
+  async function add(chosen: File | undefined) {
+    if (!chosen) return;
+    setMessage("");
+    try {
+      const { savedForLater } = await addOwnFont(chosen);
+      setMessage(
+        savedForLater
+          ? `Added ${chosen.name}. Choose it from the font menu at the top.`
+          : `Added ${chosen.name} for this visit. This browser will forget it when you close it.`,
+      );
+    } catch (failure) {
+      setMessage((failure as Error).message);
+    } finally {
+      if (file.current) file.current.value = "";
+    }
+  }
+
+  return (
+    <section>
+      <h2>Manchu fonts</h2>
+      <p>
+        Manchu looks different from font to font, and a font close to the scans can make reading easier.
+        The app comes with Noto Sans Mongolian. To use another font, download it, for example from the{" "}
+        <a href={FONT_SOURCE_URL} target="_blank" rel="noreferrer">
+          Manchu Studies Group&apos;s fonts
+        </a>
+        , and add the file here.
+      </p>
+      <p className="hint">
+        Fonts you add stay in this browser. They are never sent to our server, so only you can use them,
+        and you need to add them again in another browser or on another device.
+      </p>
+      {fonts.length > 0 && (
+        <ul className="own-fonts">
+          {fonts.map((font) => (
+            <li key={font.id}>
+              <span style={{ fontFamily: `"Manchu ${font.id}"` }}>{font.name}</span>
+              <button type="button" className="link" onClick={() => removeOwnFont(font.id)}>
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="actions">
+        <button type="button" onClick={() => file.current?.click()}>
+          Add a font file
+        </button>
+      </div>
+      <input
+        ref={file}
+        type="file"
+        accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2"
+        hidden
+        onChange={(event) => add(event.target.files?.[0])}
+      />
+      {message && <p role="status">{message}</p>}
+    </section>
+  );
+}
+
 function DeleteAccount({ onDeleted }: { onDeleted: () => void }) {
   const [password, setPassword] = useState("");
   return (
@@ -291,6 +359,7 @@ export function Account(props: { account: AccountData; onChange: () => void; onD
       <TwoFactor account={props.account} onChange={props.onChange} />
       <ChangePassword />
       <CreditName />
+      <OwnFonts />
       <DeleteAccount onDeleted={props.onDeleted} />
     </main>
   );

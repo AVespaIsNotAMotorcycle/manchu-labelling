@@ -14,8 +14,7 @@ Nothing here has been deployed yet. These steps were tested by running the stack
 - An SMTP service for email, such as Postmark, Amazon SES, or your email provider's SMTP.
 - A Cloudflare R2 bucket and an API token that can write to it.
 - **Fonts:** the images leave out `client/src/fonts/`, because those fonts are all rights reserved.
-  Users get Noto Sans Mongolian until a font's rights holder agrees. Then remove the line from
-  `.dockerignore`.
+  Users get Noto Sans Mongolian, and can add font files of their own, which stay in their browser.
 
 ## First setup
 

@@ -63,5 +63,6 @@ Known risks that remain:
 - **Published releases leave gaps** where held-back words and active checks were removed. A labeler who
   compares their history with a release could guess that a missing word is a check or held back. The
   hold-back rate makes the two indistinguishable.
-- **Fonts**: the Abkai and XM fonts must not be served until their rights holders agree. The production
-  images leave them out.
+- **Fonts**: the Abkai and XM fonts are not served. The production images leave them out, and users add
+  their own font files, which stay in their browser and never reach the server. A font file is checked by
+  loading it with the browser's font loader and is limited to 20 MB.
