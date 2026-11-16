@@ -42,6 +42,12 @@ The rules in `CLAUDE.md` apply: the API must never reveal which images are hidde
 answers are only sent after the user answers. Past checks appear on a user's Progress page only after
 25 more labels.
 
+## Independent review
+
+[`docs/security-review-brief.md`](docs/security-review-brief.md) is the brief for an independent reviewer,
+human or AI: what matters most, attacks to try, how to run the app locally, and how to report findings.
+`npm audit` found no known vulnerabilities in any dependency on 2026-11-16.
+
 ## Review, 2026-11-16
 
 The authentication flow was reviewed by the developer who wrote it, an AI assistant, so an independent
