@@ -131,7 +131,7 @@ export async function exportRelease(options: ReleaseOptions) {
   }
   const reviewerOf = new Map(reviews.map(({ wordImage, reviewer }) => [String(wordImage), reviewer]));
 
-  const excluded = { activeChecks: 0, heldBack: 0, unlabelled: 0 };
+  const excluded = { activeChecks: 0, heldBack: 0, unlabelled: 0, quizImages: 0 };
   const words: Record<string, unknown>[] = [];
   const labels: Record<string, unknown>[] = [];
   const included: { instance: (typeof instances)[number]; crop: (typeof crops)[number] }[] = [];
@@ -157,6 +157,11 @@ export async function exportRelease(options: ReleaseOptions) {
   for (const { instance, crop } of ordered) {
     const key = String(crop._id);
     const answer = knownOf.get(key);
+    // Quiz answers are kept out, so that a release cannot be used to look them up.
+    if (answer?.state === "quiz") {
+      excluded.quizImages += 1;
+      continue;
+    }
     const live = answer && answer.state !== "withdrawn" ? answer : undefined;
     if (live?.state === "active") {
       excluded.activeChecks += 1;

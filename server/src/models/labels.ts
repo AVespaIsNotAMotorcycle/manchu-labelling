@@ -70,10 +70,11 @@ annotationSchema.plugin(appendOnly);
 /**
  * The states of a known label. `active` checks are handed out and graded. `retired` checks are no longer
  * handed out, but earlier grades still count and the answer can be published. `withdrawn` answers were
- * found unreliable, so grades against them no longer count. `corrected` is not used: a correction
- * replaces the answer and keeps the old one in `history`.
+ * found unreliable, so grades against them no longer count. `quiz` answers were moved into the quiz, so
+ * they are never handed out or graded as checks, and releases leave them out. `corrected` is not used: a
+ * correction replaces the answer and keeps the old one in `history`.
  */
-export const KNOWN_LABEL_STATES = ["active", "retired", "withdrawn", "corrected"] as const;
+export const KNOWN_LABEL_STATES = ["active", "retired", "withdrawn", "quiz", "corrected"] as const;
 
 const replacedAnswerSchema = new Schema(
   {
@@ -98,6 +99,8 @@ const knownLabelSchema = new Schema({
    * from before this field use the time in their ID.
    */
   activatedAt: { type: Date, default: Date.now, immutable: true },
+  /** The quiz image made from this word, once it moves to the quiz. */
+  quizItem: { type: Schema.Types.ObjectId, ref: "TrainingItem" },
   /** Earlier answers, oldest first, kept when a dispute corrects the answer. */
   history: { type: [replacedAnswerSchema], default: undefined },
 });

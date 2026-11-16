@@ -235,10 +235,15 @@ Users complete this section before they can do real work:
 | Printed | Printed Manchu words | 2,428 | Sun et al. (2026), one photo per word, CC BY 4.0 |
 | Manuscript | Chinese characters | 64 | Chinese columns of the trial volume, each reviewed by eye |
 | Manuscript | Manchu manuscript words | 3 | *Justan i bithe*, Stabi Berlin Hs. or. 10791, public domain, read against manc.hu |
+| Manuscript | Manchu manuscript words | 100 | *Justan i bithe* hidden checks moved to the quiz (below) |
 
-- **Manuscript gap:** the manuscript phase has only 3 Manchu images, so it mostly tests the category
-  question, although the labelling queue is manuscripts. More Manchu manuscript items must be added as
-  Manjurists supply answers.
+- **Manuscript gap:** the manuscript phase had only 3 Manchu images, so it mostly tested the category
+  question. Decided by the owner on 2026-11-16: 100 of the 257 confirmed *Justan i bithe* hidden checks
+  move to the quiz, chosen at random from those nobody had been given, and 157 stay as checks.
+  `move-checks-to-quiz` does this. A moved check keeps its known label with the state `quiz`, so it is
+  never handed out or graded as a check, and releases leave it out, since quiz takers see its answer.
+  Its quiz image is a copy of the crop under a new random name. More Manchu manuscript items are still
+  needed as Manjurists supply answers.
 - Later additions are small banks in `data/training/<name>/`, imported with `--bank`. Each is marked
   as imported so that it cannot be imported twice.
 - Synthetic images are rendered from all-rights-reserved fonts, so they stay out of any publication
@@ -497,7 +502,7 @@ dataset hub such as Hugging Face.
 | `annotations` | Append-only labels with user, timestamps, confidence, typed Abkai, and converter version |
 | `cropReviews` | Competing crops awaiting an admin's ruling, and the outcome |
 | `assignments` | Which user was given which image, with no sign of whether it is a check |
-| `knownLabels` | Answers, their origin, and their state (active, retired, corrected). The only record of which images are checks |
+| `knownLabels` | Answers, their origin, and their state (active, retired, withdrawn, or quiz). The only record of which images are checks |
 | `labelReviews` | A reviewer's final answer for an image whose labels did not settle it |
 | `heldBackReviews` | A reviewer's yes, no, or undo on the answer that labelers agreed on for a held-back image |
 | `trainingItems` | Quiz images, their answers, and their sources |

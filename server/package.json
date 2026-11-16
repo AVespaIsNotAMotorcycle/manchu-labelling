@@ -16,6 +16,7 @@
     "import-known-labels": "node src/scripts/import-known-labels.ts",
     "check-results": "node src/scripts/check-results.ts",
     "hold-back": "node src/scripts/hold-back.ts",
+    "move-checks-to-quiz": "node src/scripts/move-checks-to-quiz.ts",
     "set-volume": "node src/scripts/set-volume.ts",
     "export-release": "node src/scripts/export-release.ts",
     "set-release-doi": "node src/scripts/set-release-doi.ts"

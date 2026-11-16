@@ -23,7 +23,7 @@ export interface CardData {
     statuses: Record<string, number>;
     splits: Record<string, number>;
     categories: Record<string, number>;
-    excluded: { activeChecks: number; heldBack: number; unlabelled: number };
+    excluded: { activeChecks: number; heldBack: number; unlabelled: number; quizImages: number };
   };
   parameters: {
     trust: { window: number; threshold: number; minimumSample: number };
@@ -233,6 +233,7 @@ ${table(counts.splits, "Split")}
   never by their labels, and held back to become new hidden checks. They stay out of releases until
   they are retired as checks. This release leaves out ${counts.excluded.heldBack}.
 - **Active hidden checks**, whose answers would otherwise be published: ${counts.excluded.activeChecks}.
+- **Words used in the training quiz**, whose answers annotators see while training: ${counts.excluded.quizImages}.
 - **Words with no labels yet:** ${counts.excluded.unlabelled}.
 - Crops from Chinese columns, words whose crops are awaiting an admin's ruling, and crops an admin
   retired.

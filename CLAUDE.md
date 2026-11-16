@@ -38,6 +38,7 @@ npm run import-training -w server -- --script regular --bank data/training/<name
 npm run import-known-labels -w server -- --volume URN-3:FHCL:10499177 --origin "<who>" <file>   # hidden checks
 npm run check-results -w server                                 # each user's hidden check results
 npm run hold-back -w server                                     # hold back words imported before the rule
+npm run move-checks-to-quiz -w server -- --count 100 [--dry-run]  # manuscript checks become quiz images
 npm run create-user -w server -- person@example.com [--admin | --reviewer]   # prompts for the password
 npm run set-role -w server -- person@example.com reviewer        # labeler, reviewer, or admin
 npm run create-invite -w server -- [--email person@example.com] [--role reviewer]   # prints a link

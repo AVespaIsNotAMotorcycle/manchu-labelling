@@ -151,7 +151,7 @@ test("exports settled words and every label, and leaves out checks, held-back, a
   await word();
 
   const counts = await run();
-  assert.deepEqual(counts.excluded, { activeChecks: 1, heldBack: 1, unlabelled: 1 });
+  assert.deepEqual(counts.excluded, { activeChecks: 1, heldBack: 1, unlabelled: 1, quizImages: 0 });
   assert.equal(counts.words, 3);
   assert.deepEqual(counts.statuses, { agreed: 1, single: 1, known: 1 });
 
@@ -222,4 +222,51 @@ test("rights statements given as HTML become plain text in the data card", async
     "Provided under these terms: https://example.com/terms",
   );
   assert.equal(plain('See <a href="https://e.com">the terms</a>.<br/>'), "See the terms (https://e.com).");
+});
+
+test("moves untouched manuscript checks into the quiz, which stops them being checks", async () => {
+  const { moveChecksToQuiz } = await import("../src/scripts/move-checks-to-quiz.ts");
+  const { TrainingItem } = await import("../src/models/training.ts");
+  const { checkResults } = await import("../src/checks.ts");
+  const checks = [];
+  for (let index = 0; index < 5; index += 1) {
+    const { crop } = await word();
+    await KnownLabel.create({ wordImage: crop, category: "manchu", manchu: manju.transcription.manchu, origin: "manc.hu, confirmed by someone", activatedAt: new Date(2020, 0, 1) });
+    checks.push(crop);
+  }
+  // A check someone has labelled must stay a check.
+  const labelled = checks[0] as Types.ObjectId;
+  await label(labelled, new Types.ObjectId(), { category: "illegible" });
+
+  assert.deepEqual(await moveChecksToQuiz({ count: 3, storageDirectory: storage, dryRun: true }), {
+    already: 0,
+    eligible: 4,
+    moved: 3,
+    remainingChecks: 2,
+  });
+  assert.equal(await TrainingItem.countDocuments(), 0);
+
+  const summary = await moveChecksToQuiz({ count: 3, storageDirectory: storage });
+  assert.equal(summary.moved, 3);
+  const moved = await KnownLabel.find({ state: "quiz" }).lean();
+  assert.equal(moved.length, 3);
+  assert.ok(moved.every(({ wordImage }) => !wordImage.equals(labelled)));
+  const items = await TrainingItem.find().lean();
+  assert.equal(items.length, 3);
+  for (const item of items) {
+    assert.equal(item.kind, "manuscript");
+    assert.equal(item.abkai, "manju");
+    assert.equal(item.scriptClass, "regular");
+    assert.match(item.source, /^A library \(A manuscript\), https:\/\/example\.com\/1, public domain; reading from manc\.hu, confirmed against the scan$/);
+    const crop = await WordImage.findById(moved.find(({ quizItem }) => quizItem?.equals(item._id))?.wordImage).orFail();
+    assert.notEqual(item.imageKey, crop.imageKey);
+    assert.equal(await readFile(join(storage, item.imageKey), "utf8"), await readFile(join(storage, crop.imageKey), "utf8"));
+  }
+
+  // Running it again moves only the difference, and moved words are never graded or released.
+  assert.equal((await moveChecksToQuiz({ count: 3, storageDirectory: storage })).moved, 0);
+  await label(moved[0]?.wordImage as Types.ObjectId, new Types.ObjectId(), manju);
+  assert.equal((await checkResults()).filter(({ wordImage }) => wordImage.equals(moved[0]?.wordImage)).length, 0);
+  const counts = await run();
+  assert.equal(counts.excluded.quizImages, 3);
 });

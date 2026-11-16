@@ -60,12 +60,12 @@ export const activationTime = (known: { _id: Id; activatedAt?: Date | null }): D
  * graded, so a correction counts. Results are worked out from history each time and never stored,
  * because a known answer can itself be corrected or withdrawn.
  *
- * Withdrawn answers grade nothing. A label is only graded if the user first labelled the image after it
+ * Withdrawn answers, and answers moved to the quiz, grade nothing. A label is only graded if the user first labelled the image after it
  * became a check, so the labels that agreed on a held-back answer are not graded against it.
  */
 export async function checkResults(options: { users?: readonly Id[] } = {}): Promise<CheckResult[]> {
   const known = await KnownLabel.find(
-    { state: { $ne: "withdrawn" } },
+    { state: { $nin: ["withdrawn", "quiz"] } },
     "wordImage category manchu activatedAt",
   ).lean();
   const answers = new Map(known.map((answer) => [String(answer.wordImage), answer]));
