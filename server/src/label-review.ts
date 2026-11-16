@@ -46,7 +46,8 @@ export function groupReadings(labels: readonly LatestLabel[]): Reading[] {
  */
 export async function imagesForReview(reviewer: Id, limit = 50) {
   const settlements = await settleImages();
-  const waiting = [...settlements].filter(([, { status }]) => status === "needs_review");
+  // An image waits 30 minutes after its last label, since a labeler may still change their answer.
+  const waiting = [...settlements].filter(([, { status, quiet }]) => status === "needs_review" && quiet);
   const ids = waiting.map(([id]) => new Types.ObjectId(id));
   const underReview = await instancesUnderReview();
   const [known, usable] = await Promise.all([
@@ -72,7 +73,9 @@ export async function imagesForReview(reviewer: Id, limit = 50) {
 /** Records a reviewer's final answer for an image that is waiting for review. */
 export async function reviewLabels(wordImage: Id, reviewer: Id, answer: ParsedAnswer): Promise<void> {
   const settlement = (await settleImages({ images: [wordImage] })).get(String(wordImage));
-  if (settlement?.status !== "needs_review") throw new ReviewError("This image is not waiting for review");
+  if (settlement?.status !== "needs_review" || !settlement.quiet) {
+    throw new ReviewError("This image is not waiting for review");
+  }
   if (settlement.labels.some(({ user }) => user.equals(reviewer))) {
     throw new ReviewError("You cannot review an image you labelled");
   }

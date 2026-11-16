@@ -8,6 +8,7 @@ import { abkaiToManchu } from "@manchu-labelling/script";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose, { Types } from "mongoose";
 
+import { clock } from "../src/consensus.ts";
 import { connectDatabase } from "../src/db.ts";
 import { WordImage, WordInstance } from "../src/models/crops.ts";
 import { Annotation, KnownLabel } from "../src/models/labels.ts";
@@ -37,6 +38,8 @@ after(async () => {
 });
 
 beforeEach(async () => {
+  // Labels made in a test are an hour old as far as settling is concerned, unless a test says otherwise.
+  clock.now = () => Date.now() + 2 * 60 * 60_000;
   await mongoose.connection.db?.dropDatabase();
   await mongoose.connection.syncIndexes();
   work = await mkdtemp(join(tmpdir(), "release-out-"));
@@ -151,9 +154,10 @@ test("exports settled words and every label, and leaves out checks, held-back, a
   await word();
 
   const counts = await run();
-  assert.deepEqual(counts.excluded, { activeChecks: 1, heldBack: 1, unlabelled: 1, quizImages: 0 });
-  assert.equal(counts.words, 3);
-  assert.deepEqual(counts.statuses, { agreed: 1, single: 1, known: 1 });
+  // The word with one label has not settled, so it is left out.
+  assert.deepEqual(counts.excluded, { activeChecks: 1, heldBack: 1, unlabelled: 1, unsettled: 1, quizImages: 0 });
+  assert.equal(counts.words, 2);
+  assert.deepEqual(counts.statuses, { agreed: 1, known: 1 });
 
   const words = await readLines("0.1.0", "words.jsonl");
   const byId = new Map(words.map((row) => [row.id, row]));
@@ -166,16 +170,16 @@ test("exports settled words and every label, and leaves out checks, held-back, a
   assert.equal(agreedRow.rights.license, "PDM-1.0");
   assert.equal(agreedRow.labels, 3);
   assert.equal(byId.get(String(retired.instance)).final.status, "known");
-  assert.equal(byId.get(String(single.instance)).final.category, "illegible");
+  assert.equal(byId.get(String(single.instance)), undefined);
 
   const labels = await readLines("0.1.0", "labels.jsonl");
-  assert.equal(labels.length, 4);
+  assert.equal(labels.length, 3);
   const ofFirst = labels.filter(({ annotator }) => annotator === annotatorId(SECRET, first));
   assert.deepEqual(ofFirst.map(({ latest }) => latest), [false, true]);
   assert.ok(labels.every(({ counted }) => counted));
 
   const images = await readdir(join(work, "0.1.0", "images"));
-  assert.equal(images.length, 3);
+  assert.equal(images.length, 2);
   assert.equal(await readFile(join(work, "0.1.0", agreedRow.file_name), "utf8"), "crop 1");
 
   // Nothing published names a user.
@@ -190,10 +194,10 @@ test("exports settled words and every label, and leaves out checks, held-back, a
   assert.match(card, /\| `agreed` \| 1 \|/);
   const sums = await readFile(join(work, "0.1.0", "SHA256SUMS"), "utf8");
   assert.match(sums, /[0-9a-f]{64} {2}words\.jsonl/);
-  assert.equal(sums.trim().split("\n").length, 9);
+  assert.equal(sums.trim().split("\n").length, 8);
 
   const { ReleasedWord } = await import("../src/models/releases.ts");
-  assert.equal(await ReleasedWord.countDocuments({ version: "0.1.0" }), 3);
+  assert.equal(await ReleasedWord.countDocuments({ version: "0.1.0" }), 2);
   const release = await Release.findOne({ version: "0.1.0" }).orFail();
   assert.equal(release.volumes[0]?.split, "train");
   await assert.rejects(run(), /already exists/);
@@ -202,6 +206,7 @@ test("exports settled words and every label, and leaves out checks, held-back, a
 });
 
 test("labels from users who were not trusted are published but do not count", async () => {
+  // The careless user's label alone would not settle the word, so two trusted labels agree with it.
   const careless = new Types.ObjectId();
   const target = await word();
   // Ten failed checks before the label make the user untrusted.
@@ -211,10 +216,12 @@ test("labels from users who were not trusted are published but do not count", as
     await Annotation.create({ wordImage: check.crop, user: careless, converterVersion: 1, category: "illegible", createdAt: new Date(2026, 0, 1, 0, index) });
   }
   await Annotation.create({ wordImage: target.crop, user: careless, converterVersion: 1, ...manju, createdAt: new Date(2026, 0, 2) });
+  await label(target.crop, new Types.ObjectId());
+  await label(target.crop, new Types.ObjectId());
   const counts = await run();
-  assert.deepEqual(counts.statuses, { unsettled: 1 });
-  const [row] = await readLines("0.1.0", "labels.jsonl");
-  assert.equal(row.counted, false);
+  assert.deepEqual(counts.statuses, { agreed: 1 });
+  const rows = await readLines("0.1.0", "labels.jsonl");
+  assert.deepEqual(rows.map(({ counted }) => counted), [false, true, true]);
 });
 
 test("rights statements given as HTML become plain text in the data card", async () => {

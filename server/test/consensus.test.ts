@@ -79,3 +79,18 @@ test("readings are grouped without names, most common first", () => {
   );
   assert.equal("user" in (readings[0] as object), false);
 });
+
+test("an agreement only settles 30 minutes after the last label, but stops wanting labels at once", () => {
+  const made = new Date(2026, 0, 1, 12, 0);
+  const labels = [reading("manju", { createdAt: made }), reading("manju", { createdAt: made })];
+  const soon = settle(labels, { now: new Date(2026, 0, 1, 12, 29) });
+  assert.equal(soon.status, "agreed");
+  assert.equal(soon.wantsLabel, false);
+  assert.equal(soon.settled, false);
+  assert.equal(soon.quiet, false);
+  const later = settle(labels, { now: new Date(2026, 0, 1, 12, 30) });
+  assert.equal(later.settled, true);
+  assert.equal(later.quiet, true);
+  // A word that does not agree never settles on its own.
+  assert.equal(settle([reading("manju", { createdAt: made })], { now: new Date(2027, 0, 1) }).settled, false);
+});

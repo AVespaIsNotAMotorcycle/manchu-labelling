@@ -4,7 +4,7 @@ import { UNREADABLE } from "@manchu-labelling/script";
 import type { Types } from "mongoose";
 
 import { passesCheck, scriptClassOfImages } from "./checks.ts";
-import { loadTrust } from "./consensus.ts";
+import { clock, loadTrust, UNDO_WINDOW_MS } from "./consensus.ts";
 import { WordInstance } from "./models/crops.ts";
 import { Annotation, HeldBackReview, KnownLabel, type Category } from "./models/labels.ts";
 
@@ -91,10 +91,14 @@ export async function agreementsToReview(limit = 50): Promise<Agreement[]> {
     latest.get(image)?.set(String(label.user), label);
   }
   const agreements: Agreement[] = [];
+  const now = clock.now();
   for (const crop of open) {
+    const all = [...(latest.get(String(crop))?.values() ?? [])];
+    // A labeler can change their answer for 30 minutes, so the agreement waits until then.
+    if (all.some(({ createdAt }) => now - (createdAt as Date).getTime() < UNDO_WINDOW_MS)) continue;
     // Only labels from users who were trusted when they made them count towards the agreement.
     const scriptClass = scriptOf.get(String(crop)) ?? "unknown";
-    const trusted = [...(latest.get(String(crop))?.values() ?? [])].filter((label) =>
+    const trusted = all.filter((label) =>
       trust.isTrusted(label.user, scriptClass, label.createdAt as Date),
     );
     const answer = agreedAnswer(trusted);

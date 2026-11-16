@@ -12,6 +12,7 @@ import mongoose, { Types } from "mongoose";
 
 import { createApp } from "../src/app.ts";
 import { checkResults, passesCheck, summarizeChecks } from "../src/checks.ts";
+import { clock } from "../src/consensus.ts";
 import { connectDatabase } from "../src/db.ts";
 import { CropReview, WordImage, WordInstance } from "../src/models/crops.ts";
 import { Annotation, Assignment, HeldBackReview, KnownLabel } from "../src/models/labels.ts";
@@ -123,6 +124,8 @@ after(async () => {
 });
 
 beforeEach(async () => {
+  // Labels made in a test are an hour old as far as settling is concerned, unless a test says otherwise.
+  clock.now = () => Date.now() + 2 * 60 * 60_000;
   await mongoose.connection.db?.dropDatabase();
   await mongoose.connection.syncIndexes();
   const volume = await Volume.create({
@@ -1255,4 +1258,58 @@ test("admins see unpublished labelled images with every label, but not checks or
 
   assert.deepEqual((await (await admin.request("/api/admin/labelled?status=single")).json()).items, []);
   assert.equal((await admin.request("/api/admin/labelled?status=nonsense")).status, 400);
+});
+
+test("reviewers and held-back confirmation wait 30 minutes after the last label", async () => {
+  clock.now = () => Date.now();
+  const reviewer = await loggedIn("reviewer@example.com", { role: "reviewer" });
+  await labelBy(imageId, 1, manju);
+  await labelBy(imageId, 1, { category: "illegible" });
+  await labelBy(imageId, 1, { category: "bad_crop" });
+  const items = async (path: string) => (await (await reviewer.request(`/api/review/${path}`)).json()).items;
+  assert.deepEqual(await items("labels"), []);
+  const decide = await reviewer.request(`/api/review/labels/${imageId}`, { method: "POST", body: { category: "illegible" } });
+  assert.equal(decide.status, 409);
+  clock.now = () => Date.now() + 31 * 60_000;
+  assert.equal((await items("labels")).length, 1);
+
+  const image = await WordImage.findById(imageId).orFail();
+  const page = image.page;
+  const held = await makeWord("99999999-9999-4999-8999-999999999999.jpg", page, { word: 9 });
+  await WordInstance.updateOne({ _id: held.instance }, { heldBack: true });
+  clock.now = () => Date.now();
+  await labelBy(held._id, 3, manju);
+  assert.deepEqual(await items("held-back"), []);
+  clock.now = () => Date.now() + 31 * 60_000;
+  assert.equal((await items("held-back")).length, 1);
+});
+
+test("a labeler can change only their last answer, within 30 minutes, keeping the old one", async () => {
+  const client = await loggedIn("person@example.com");
+  const page = (await WordImage.findById(imageId).orFail()).page;
+  await makeWord("12121212-1212-4121-8121-121212121212.jpg", page, { word: 3 });
+  assert.deepEqual(await (await client.request("/api/labelling/last")).json(), { last: null });
+
+  const first = (await (await client.request("/api/labelling/next")).json()).image.id;
+  await client.request(`/api/labelling/${first}`, { method: "POST", body: { category: "manchu", transcription: "manjv" } });
+  const second = (await (await client.request("/api/labelling/next")).json()).image.id;
+  await client.request(`/api/labelling/${second}`, { method: "POST", body: { category: "chinese" } });
+
+  const { last } = await (await client.request("/api/labelling/last")).json();
+  assert.equal(last.image.id, second);
+  assert.equal(last.label.category, "chinese");
+  const change = (id: string, body: object) => client.request(`/api/labelling/${id}/change`, { method: "POST", body });
+  assert.equal((await change(first, { category: "manchu", transcription: "manju" })).status, 409);
+  assert.equal((await change(second, { category: "manchu" })).status, 400);
+  assert.equal((await change(second, { category: "manchu", transcription: "manju" })).status, 201);
+
+  const labels = await Annotation.find({ wordImage: second }).sort({ createdAt: 1, _id: 1 }).lean();
+  assert.equal(labels.length, 2);
+  assert.equal(String(labels[1]?.supersedes), String(labels[0]?._id));
+  assert.equal(labels[1]?.transcription?.abkai, "manju");
+
+  // After 30 minutes, the answer is final.
+  await Annotation.collection.updateMany({}, { $set: { createdAt: new Date(Date.now() - 31 * 60_000) } });
+  assert.deepEqual(await (await client.request("/api/labelling/last")).json(), { last: null });
+  assert.equal((await change(second, { category: "illegible" })).status, 409);
 });

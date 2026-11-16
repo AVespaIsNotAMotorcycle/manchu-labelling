@@ -1,7 +1,7 @@
 import { manchuToAbkai } from "@manchu-labelling/script";
 import { Types } from "mongoose";
 
-import { canSettle, settleImages, type Status } from "./consensus.ts";
+import { canSettle, settleImages, UNDO_WINDOW_MS, type Status } from "./consensus.ts";
 import { WordImage, WordInstance } from "./models/crops.ts";
 import { KnownLabel, LabelReview } from "./models/labels.ts";
 import { ReleasedWord } from "./models/releases.ts";
@@ -90,6 +90,12 @@ export async function labelledImages(options: { status?: Status; page?: number }
         position: { side: image.side, column: image.column, word: image.word },
         heldBack: heldBack.has(String(image.instance)),
         status: settlement.status,
+        settled: settlement.settled,
+        /** When an agreement or a disagreement waiting for review stops changing, if it has not yet. */
+        quietAt:
+          !settlement.quiet && settlement.lastLabelAt
+            ? new Date(settlement.lastLabelAt.getTime() + UNDO_WINDOW_MS)
+            : undefined,
         answer: settlement.answer
           ? { category: settlement.answer.category, ...withAbkai(settlement.answer.manchu) }
           : undefined,

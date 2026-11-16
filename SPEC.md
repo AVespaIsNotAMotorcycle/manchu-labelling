@@ -160,6 +160,14 @@ Decided by the owner on 2026-11-16. With few labelers expected, redundancy start
 3. If that does not settle it, the image goes to a reviewer.
 
 - Each user's latest label on an image counts, so a correction replaces what it corrects.
+- **Changing an answer**, decided by the owner on 2026-11-16: a labeler can change their last answer
+  within 30 minutes of giving it, and no other. The change is a new label that points to the old one, so
+  nothing is deleted.
+- **Settling waits for the undo window.** Once an image meets the rules below it stops being handed
+  out, but it only counts as settled 30 minutes after its last label. Disagreements likewise wait 30
+  minutes before going to a reviewer, and held-back agreements before going to confirmation. A
+  reviewer's answer settles an image. Only settled words, and retired checks with expert answers, are
+  published.
 - Labels **match** on exact category and, for Manchu, exact letters. The intended word is ignored.
 - Only labels from users who were trusted when they made them count, as in the export (section 7).
 - A label marked unsure about its category or transcription, or with a `?` in it, cannot settle an
@@ -184,7 +192,8 @@ Decided by the owner on 2026-11-16. With few labelers expected, redundancy start
   in the queue forever. Approved by the owner on 2026-11-16.
 - As built, held-back agreements also only count labelers who were trusted when they labelled.
 
-Images that have only one label can still be exported, marked with their status (section 9).
+Only settled words are published (decided by the owner on 2026-11-16). This replaces an earlier plan to
+publish words with a single label, marked as such.
 
 ### Queue priority **[Proposed]**
 
@@ -452,7 +461,7 @@ font must have permission from its rights holder or be removed.**
 - **Splits are fixed and made by source volume**, so that one hand or printing does not appear in both
   training and test data.
 - **Contents:** crops, page references and coordinates, reading order, every raw label, the final label
-  with its status (for example `single`, `agreed`, `reviewed`), and attribution and rights.
+  with its status (`agreed`, `reviewed`, or `known`), and attribution and rights.
 - **Annotator IDs are pseudonymous in the data.** Contributors can opt in to being credited by name.
   Names are listed separately and not linked to annotator IDs, so that crediting someone does not
   publish their accuracy. Users set the name they want credited in their account settings.
@@ -473,7 +482,7 @@ font must have permission from its rights holder or be removed.**
   the folder and a record in `releases` with the parameters used, the commit, counts, and checksums.
   `set-release-doi` records the DOI once, in `releaseDois`. Annotator IDs need `ANNOTATOR_ID_SECRET`,
   which must never change. Final statuses are `known` (a retired check's expert answer), `reviewed`,
-  `agreed`, `single`, and `unsettled` (no final label). Words with no labels are left out. A release
+  and `agreed`. Words that have not settled, and words with no labels, are left out. A release
   that mixes licenses refuses to include a noncommercial one.
 - Past releases cannot be changed, so a name that was published stays in that version.
 

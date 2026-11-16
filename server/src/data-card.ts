@@ -23,7 +23,7 @@ export interface CardData {
     statuses: Record<string, number>;
     splits: Record<string, number>;
     categories: Record<string, number>;
-    excluded: { activeChecks: number; heldBack: number; unlabelled: number; quizImages: number };
+    excluded: { activeChecks: number; heldBack: number; unlabelled: number; unsettled: number; quizImages: number };
   };
   parameters: {
     trust: { window: number; threshold: number; minimumSample: number };
@@ -199,6 +199,8 @@ knowing the language, and the process is built around that.
 4. **Settling.** A word needs ${p.consensus.matching} matching labels that count. A label that is unsure, or has an
    unreadable letter, cannot settle a word. A disagreement brings in another annotator, and after
    ${p.consensus.labelsBeforeReview} labels without agreement a reviewer decides. A word is given to at most ${p.consensus.maxLabelers} annotators.
+   Annotators can change their last answer for 30 minutes, so a word only settles 30 minutes after its
+   last label, and only settled words are published.
 
 ## Quality control
 
@@ -217,8 +219,6 @@ knowing the language, and the process is built around that.
 | \`known\` | An expert answer from a retired hidden check |
 | \`reviewed\` | Annotators did not agree, and a reviewer decided |
 | \`agreed\` | ${p.consensus.matching} or more labels that counted matched exactly |
-| \`single\` | Only one label counted so far. Use with care |
-| \`unsettled\` | The labels that counted do not agree yet, or none counted. There is no final label |
 
 ${table(counts.statuses, "Status")}
 ## Splits
@@ -235,6 +235,8 @@ ${table(counts.splits, "Split")}
 - **Active hidden checks**, whose answers would otherwise be published: ${counts.excluded.activeChecks}.
 - **Words used in the training quiz**, whose answers annotators see while training: ${counts.excluded.quizImages}.
 - **Words with no labels yet:** ${counts.excluded.unlabelled}.
+- **Words that have not settled**, whose labels do not agree yet or which are waiting for a reviewer:
+  ${counts.excluded.unsettled}. Their labels are left out too.
 - Crops from Chinese columns, words whose crops are awaiting an admin's ruling, and crops an admin
   retired.
 
@@ -245,8 +247,8 @@ Because of these, the dataset is not a full transcription of any page.
 - **Segmentation.** Crops are cut automatically and are rectangular, so parts of neighbouring words
   can appear, and some crops hold part of a word or two words. In a check of 100 random crops from
   the first volume, about 80 showed one complete word. Annotators mark bad crops as \`bad_crop\`.
-- **Annotators.** Most are trained newcomers to Manchu rather than specialists. Trust and review
-  limit the effect, but \`single\` labels in particular have had no second opinion.
+- **Annotators.** Most are trained newcomers to Manchu rather than specialists. Trust, agreement, and
+  review limit the effect.
 - **Few expert answers for manuscripts.** Hidden checks for manuscripts come from a small number of
   expert-confirmed words, so trust is estimated from small samples, especially early on.
 - **Letters, not glyphs.** Without variation selectors, two different shapes of a letter are written

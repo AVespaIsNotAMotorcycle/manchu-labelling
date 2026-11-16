@@ -33,8 +33,8 @@ export interface ReleaseOptions {
   commit?: string;
 }
 
-/** Final label statuses, as published. */
-export type PublishedStatus = "known" | "reviewed" | "agreed" | "single" | "unsettled";
+/** Final label statuses, as published. Only settled words are published. */
+export type PublishedStatus = "known" | "reviewed" | "agreed";
 
 /** An annotator's ID in releases: a keyed hash, so it is stable across releases but reveals nothing. */
 export function annotatorId(secret: string, user: Id | string): string {
@@ -131,7 +131,7 @@ export async function exportRelease(options: ReleaseOptions) {
   }
   const reviewerOf = new Map(reviews.map(({ wordImage, reviewer }) => [String(wordImage), reviewer]));
 
-  const excluded = { activeChecks: 0, heldBack: 0, unlabelled: 0, quizImages: 0 };
+  const excluded = { activeChecks: 0, heldBack: 0, unlabelled: 0, unsettled: 0, quizImages: 0 };
   const words: Record<string, unknown>[] = [];
   const labels: Record<string, unknown>[] = [];
   const included: { instance: (typeof instances)[number]; crop: (typeof crops)[number] }[] = [];
@@ -191,18 +191,13 @@ export async function exportRelease(options: ReleaseOptions) {
         category: live.category,
         ...(live.category === "manchu" && live.manchu ? { manchu: live.manchu } : {}),
       };
-    } else if (settlement?.status === "reviewed" || settlement?.status === "agreed") {
+    } else if (settlement?.settled && (settlement.status === "reviewed" || settlement.status === "agreed")) {
       status = settlement.status;
       final = settlement.answer;
-    } else if (settlement?.status === "single") {
-      status = "single";
-      const label = settlement.labels.find(({ trusted }) => trusted);
-      final = label && {
-        category: label.category,
-        ...(label.category === "manchu" ? { manchu: label.transcription?.manchu } : {}),
-      };
     } else {
-      status = "unsettled";
+      // A word that has not settled is not published, so that every published word has a final label.
+      excluded.unsettled += 1;
+      continue;
     }
 
     const counted = settlement?.labels.filter(({ trusted }) => trusted) ?? [];
