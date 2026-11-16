@@ -38,7 +38,8 @@ npm run import-training -w server -- --script regular --bank data/training/<name
 npm run import-known-labels -w server -- --volume URN-3:FHCL:10499177 --origin "<who>" <file>   # hidden checks
 npm run check-results -w server                                 # each user's hidden check results
 npm run hold-back -w server                                     # hold back words imported before the rule
-npm run create-user -w server -- person@example.com [--admin]   # prompts for the password
+npm run create-user -w server -- person@example.com [--admin | --reviewer]   # prompts for the password
+npm run set-role -w server -- person@example.com reviewer        # labeler, reviewer, or admin
 ```
 
 ## Layout

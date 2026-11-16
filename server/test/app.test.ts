@@ -1067,7 +1067,8 @@ test("a held-back agreement only counts labelers who were trusted at the time", 
     wordImage: imageId,
     user: careless,
     converterVersion: 1,
-    ...manju,
+    category: "manchu",
+    transcription: manju.transcription,
     createdAt: new Date(Date.now() + 60 * 60_000),
   });
   assert.deepEqual((await (await reviewer.request("/api/review/held-back")).json()).items, []);

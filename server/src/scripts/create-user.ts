@@ -1,7 +1,7 @@
 /**
  * Creates a test account. Registration is deliberately not open to the public yet.
  *
- * Usage: npm run create-user -w server -- person@example.com [--admin]
+ * Usage: npm run create-user -w server -- person@example.com [--admin | --reviewer]
  *
  * The password is prompted for, so that it stays out of shell history. Automated jobs with no
  * terminal can set USER_PASSWORD instead.
@@ -20,10 +20,15 @@ import { hashPassword } from "../passwords.ts";
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
-  options: { admin: { type: "boolean", default: false } },
+  options: {
+    admin: { type: "boolean", default: false },
+    reviewer: { type: "boolean", default: false },
+  },
 });
 const [email] = positionals;
-if (!email) throw new Error("Usage: create-user <email> [--admin]");
+if (!email || (values.admin && values.reviewer)) {
+  throw new Error("Usage: create-user <email> [--admin | --reviewer]");
+}
 
 /** Reads a line without echoing it, because readline's output goes nowhere. */
 async function askHidden(prompt: string): Promise<string> {
@@ -57,7 +62,7 @@ await connectDatabase();
 await User.create({
   email,
   passwordHash,
-  role: values.admin ? "admin" : "labeler",
+  role: values.admin ? "admin" : values.reviewer ? "reviewer" : "labeler",
 });
 console.log(`Created ${email}`);
 await mongoose.disconnect();

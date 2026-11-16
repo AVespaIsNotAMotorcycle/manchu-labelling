@@ -9,6 +9,7 @@
     "test": "node --test test/*.test.ts",
     "import-segments": "node src/scripts/import-segments.ts",
     "create-user": "node src/scripts/create-user.ts",
+    "set-role": "node src/scripts/set-role.ts",
     "import-training": "node src/scripts/import-training.ts",
     "split-real-training": "node src/scripts/split-real-training.ts",
     "import-known-labels": "node src/scripts/import-known-labels.ts",
